@@ -1,0 +1,14 @@
+# example
+
+INPUT(1)
+INPUT(2)
+INPUT(3)
+INPUT(4)
+
+OUTPUT(5)
+OUTPUT(6)
+
+5 = AND(1, 2)
+6 = AND(3, 4)
+
+

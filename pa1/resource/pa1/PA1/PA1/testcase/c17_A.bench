@@ -1,0 +1,17 @@
+# c17
+
+INPUT(0)
+INPUT(1)
+INPUT(2)
+INPUT(3)
+INPUT(4)
+
+OUTPUT(5)
+OUTPUT(6)
+
+7 = NAND(0, 2)
+8 = NAND(2, 3)
+9 = NAND(1, 8)
+5 = NAND(7, 9)
+10 = NAND(4, 8)
+6 = NAND(9, 10)
