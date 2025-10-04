@@ -142,7 +142,7 @@ Circuit parse_bench(const string &path)
                 throw BenchParserError(gtype + " must have at least 2 inputs at line " + to_string(lineno));
             }
 
-            ckt.gates.push_back(Gate{out, gtype, move(ins)});
+            ckt.gates.push_back(Gate{move(ins), out, gtype});
             continue;
         }
 

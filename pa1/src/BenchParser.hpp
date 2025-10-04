@@ -8,9 +8,9 @@ using namespace std;
 
 struct Gate
 {
-    string out;
-    string type;        // AND, NAND, OR, NOR, NOT, XOR, BUFF
     vector<string> ins; // input pin names (order preserved)
+    string out;         // output pin name
+    string type;        // AND, NAND, OR, NOR, NOT, XOR, BUFF
 };
 
 struct Circuit

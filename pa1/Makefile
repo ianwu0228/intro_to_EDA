@@ -1,17 +1,17 @@
 CXX := g++
 CXXFLAGS := -std=gnu++17 -O2 -Wall -Wextra -Wpedantic
-
-SRC := src/BenchParser.cpp src/main.cpp
 INC := -Isrc
+BIN := bin
 
-BIN_DIR := bin
-BIN := $(BIN_DIR)/parse_demo
+all: $(BIN)/ec
 
-all: $(BIN)
+$(BIN)/parse_demo): src/BenchParser.cpp src/BenchParser.hpp src/main.cpp
+	@mkdir -p $(BIN)
+	$(CXX) $(CXXFLAGS) $(INC) src/BenchParser.cpp src/main.cpp -o $(BIN)/parse_demo
 
-$(BIN): $(SRC) src/BenchParser.hpp
-	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(INC) $(SRC) -o $(BIN)
+$(BIN)/ec: src/BenchParser.cpp src/BenchParser.hpp src/CNF.hpp src/Tseitin.hpp src/main.cpp
+	@mkdir -p $(BIN)
+	$(CXX) $(CXXFLAGS) $(INC) src/BenchParser.cpp src/main.cpp -o $(BIN)/ec
 
 clean:
-	rm -rf $(BIN_DIR)
+	rm -rf $(BIN)
