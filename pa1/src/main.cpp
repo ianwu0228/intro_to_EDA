@@ -20,6 +20,13 @@ int main(int argc, char **argv)
         Circuit A = parse_bench(argv[1]);
         Circuit B = parse_bench(argv[2]);
 
+        // cout << "circuit A:\n";
+        // print_circuit(A);
+        // cout << "\n";
+        // cout << "circuit B:\n";
+        // print_circuit(B);
+        // cout << "\n";
+
         if (outputs_align_by_index && A.outputs.size() != B.outputs.size())
         {
             cerr << "Error: different #outputs.\n";
@@ -32,6 +39,8 @@ int main(int argc, char **argv)
         // Encode both circuits; PIs are shared via PinTable
         vector<int> Aout = encode_circuit_to_cnf(cnf, pt, A, "A");
         vector<int> Bout = encode_circuit_to_cnf(cnf, pt, B, "B");
+
+        // print_PinTable(pt);
 
         // Optional: align by name
         if (!outputs_align_by_index)
@@ -69,7 +78,8 @@ int main(int argc, char **argv)
         }
         cnf.write_dimacs(ofs);
         cout << "Wrote DIMACS to " << argv[3] << "\n";
-        cout << "UNSAT => equivalent; SAT => not equivalent.\n";
+        // cout << "UNSAT => equivalent; SAT => not equivalent.\n";
+        cout << "DONE\n";
     }
     catch (const BenchParserError &e)
     {

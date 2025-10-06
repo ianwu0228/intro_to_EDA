@@ -52,17 +52,48 @@ inline void enc_XOR2(CNF &cnf, int z, int a, int b)
     cnf.add_clause({a, -b, z});
     cnf.add_clause({-a, b, z});
 }
+
 inline void enc_NAND(CNF &cnf, int z, const vector<int> &xs)
 {
-    int t = cnf.new_var();
-    enc_AND(cnf, t, xs);
-    enc_NOT(cnf, z, t);
+    if (xs.empty())
+        throw runtime_error("NAND of 0 inputs is undefined");
+    if (xs.size() == 1)
+    {
+        enc_NOT(cnf, z, xs[0]);
+        return;
+    } // NAND(x) = NOT(x)
+
+    // (xi ∨ z)  for each input
+    for (int x : xs)
+        cnf.add_clause({x, z});
+
+    // (¬x1 ∨ ¬x2 ∨ ... ∨ ¬xn ∨ ¬z)
+    vector<int> big;
+    big.reserve(xs.size() + 1);
+    for (int x : xs)
+        big.push_back(-x);
+    big.push_back(-z);
+    cnf.add_clause(big);
 }
+
 inline void enc_NOR(CNF &cnf, int z, const vector<int> &xs)
 {
-    int t = cnf.new_var();
-    enc_OR(cnf, t, xs);
-    enc_NOT(cnf, z, t);
+    if (xs.empty())
+        throw runtime_error("NOR of 0 inputs is undefined");
+    if (xs.size() == 1)
+    {
+        enc_NOT(cnf, z, xs[0]);
+        return;
+    } // NOR(x) = NOT(x)
+
+    // (¬xi ∨ ¬z)  for each input
+    for (int x : xs)
+        cnf.add_clause({-x, -z});
+
+    // (x1 ∨ x2 ∨ ... ∨ xn ∨ z)
+    vector<int> big(xs.begin(), xs.end());
+    big.push_back(z);
+    cnf.add_clause(big);
 }
 
 // Encode one parsed circuit. Returns PO vars in the same order as ckt.outputs.

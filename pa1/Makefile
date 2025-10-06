@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=gnu++17 -O2 -Wall -Wextra -Wpedantic
+CXXFLAGS := -std=gnu++17 -O3 -Wall -Wextra -Wpedantic
 INC := -Isrc
 BIN := bin
 

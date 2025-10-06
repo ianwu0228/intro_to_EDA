@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <initializer_list>
 #include <ostream>
+#include <iostream>
+#include <iomanip>
 using namespace std;
 
 struct CNF
@@ -26,6 +28,8 @@ struct CNF
         }
     }
 };
+
+// map the given pin names to a special id(number)
 
 struct PinTable
 {
@@ -51,3 +55,34 @@ struct PinTable
         return v;
     }
 };
+
+void print_PinTable(PinTable &pt)
+{
+    cout << "================ PinTable ================\n";
+
+    cout << "[Primary Inputs]\n";
+    if (pt.pi_to_var.empty())
+    {
+        cout << "  (none)\n";
+    }
+    else
+    {
+        for (const auto &p : pt.pi_to_var)
+            cout << "  " << setw(20) << left << p.first
+                 << " -> var " << p.second << "\n";
+    }
+
+    cout << "\n[Internal Nets]\n";
+    if (pt.net_to_var.empty())
+    {
+        cout << "  (none)\n";
+    }
+    else
+    {
+        for (const auto &n : pt.net_to_var)
+            cout << "  " << setw(20) << left << n.first
+                 << " -> var " << n.second << "\n";
+    }
+
+    cout << "=========================================\n";
+}
