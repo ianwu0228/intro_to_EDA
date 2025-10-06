@@ -1,0 +1,12 @@
+INPUT(h_67)
+INPUT(a)
+
+OUTPUT(haha)
+OUTPUT(z)
+
+t1 = AND(a, h_67)
+t2 = NOT(t1)
+haha = NOT(a)
+t3 = NOT(t2)
+t4 = BUFF(t3)
+z  = BUFF(t4)

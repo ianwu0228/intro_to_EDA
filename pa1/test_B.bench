@@ -1,0 +1,9 @@
+INPUT(a)
+INPUT(h_67)
+
+OUTPUT(z)
+OUTPUT(haha)
+
+t1 = NAND(a, h_67)
+z  = NOT(t1)
+haha = NOT(a)
