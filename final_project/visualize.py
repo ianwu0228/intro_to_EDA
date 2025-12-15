@@ -139,12 +139,13 @@ def plot_result(chip_w, chip_h, fixed_modules, soft_modules, hpwl, output_img="r
     
     plt.savefig(output_img, dpi=300)
     print(f"Plot saved to {output_img}")
-    plt.show()
+    # plt.show() # Commented out to run cleanly on servers without display
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Visualize ICCAD Floorplan Result')
     parser.add_argument('input_file', help='Path to the input problem file (.txt)')
     parser.add_argument('output_file', help='Path to the solver output file (.txt)')
+    parser.add_argument('-o', '--plot_file', default='result.png', help='Output filename for the plot image (default: result.png)')
     
     args = parser.parse_args()
     
@@ -157,4 +158,4 @@ if __name__ == "__main__":
     print(f"Soft Modules: {len(soft)}")
     
     # Plot
-    plot_result(cw, ch, fixed, soft, hpwl)
+    plot_result(cw, ch, fixed, soft, hpwl, args.plot_file)

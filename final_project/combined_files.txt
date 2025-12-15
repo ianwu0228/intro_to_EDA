@@ -1511,11 +1511,8 @@ bool Tree::isDescendant(Node *ancestor, Node *candidate)
 void Tree::clearContour()
 {
     ContourSegment *cur = _contourHead;
-    cout << cur << endl;
-    cout << "cut->next" << cur->next << endl;
     while (cur)
     {
-        cout << "enter wbile" << endl;
         ContourSegment *next = cur->next;
         delete cur;
         cur = next;
@@ -1525,6 +1522,7 @@ void Tree::clearContour()
 
 void Tree::pack()
 {
+    clearContour();
     _contourHead = new ContourSegment(0, std::numeric_limits<size_t>::max(), 0);
     pack(_root, 0); // Start at origin
 }
@@ -1849,7 +1847,7 @@ class Tree
 {
 public:
     Tree(vector<Block> &blocks)
-        : _blocks(blocks), _root(nullptr)
+        : _blocks(blocks), _root(nullptr), _contourHead(nullptr)
     {
         // _nodes.reserve(blocks.size()); // Reserve space for nodes
         // for (size_t i = 0; i < blocks.size(); ++i) {

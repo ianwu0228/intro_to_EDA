@@ -11,6 +11,12 @@
 
 using namespace std;
 
+// usage
+// deafault:
+// python3 visualize.py input_case1.txt output_case1.txt
+// specify file name:
+// python3 visualize.py input_case1.txt output_case1.txt -o my_floorplan.png
+
 int main(int argc, char **argv)
 {
     srand(static_cast<unsigned int>(time(0)));
@@ -45,7 +51,7 @@ int main(int argc, char **argv)
         cout << "ICCAD Format Detected." << endl;
         input_file.open(argv[1], ios::in);
         output.open(argv[2], ios::out);
-        alpha = 0.5; // Default if not provided
+        alpha = 0; // Default if not provided
     }
     else
     {
