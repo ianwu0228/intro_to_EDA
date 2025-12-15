@@ -1,0 +1,8 @@
+Outline: 5 6
+NumBlocks: 4
+NumTerminals: 0
+
+b0 3 4
+b1 3 2
+b2 2 3
+b3 2 3

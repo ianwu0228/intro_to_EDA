@@ -1,0 +1,903 @@
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 20:52:32 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 55 rows, 36 columns and 220 nonzeros
+Model fingerprint: 0x8a575438
+Variable types: 11 continuous, 25 integer (25 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 6e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 6e+00]
+  RHS range        [2e+00, 1e+01]
+Found heuristic solution: objective 6.0000000
+Presolve removed 6 rows and 1 columns
+Presolve time: 0.00s
+Presolved: 49 rows, 35 columns, 214 nonzeros
+Variable types: 11 continuous, 24 integer (24 binary)
+
+Root relaxation: objective 2.000000e+00, 14 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    2.00000    0    7    6.00000    2.00000  66.7%     -    0s
+     0     0    2.18182    0   18    6.00000    2.18182  63.6%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   17    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   17    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   16    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   10    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   10    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     2    4.00000    0    8    6.00000    4.00000  33.3%     -    0s
+
+Cutting planes:
+  Learned: 9
+  Gomory: 4
+  Cover: 2
+  MIR: 46
+  Inf proof: 3
+  RLT: 2
+
+Explored 667 nodes (2942 simplex iterations) in 0.07 seconds (0.01 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 20:54:28 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 36 rows, 25 columns and 144 nonzeros
+Model fingerprint: 0x436df8ef
+Variable types: 9 continuous, 16 integer (16 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 6e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 6e+00]
+  RHS range        [2e+00, 1e+01]
+Found heuristic solution: objective 6.0000000
+Presolve removed 4 rows and 0 columns
+Presolve time: 0.00s
+Presolved: 32 rows, 25 columns, 140 nonzeros
+Variable types: 9 continuous, 16 integer (16 binary)
+
+Root relaxation: objective 3.000000e+00, 10 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    3.00000    0    9    6.00000    3.00000  50.0%     -    0s
+     0     0    3.00000    0   10    6.00000    3.00000  50.0%     -    0s
+     0     0    6.00000    0    4    6.00000    6.00000  0.00%     -    0s
+
+Cutting planes:
+  Learned: 1
+  Gomory: 6
+  Cover: 3
+  MIR: 16
+
+Explored 1 nodes (94 simplex iterations) in 0.02 seconds (0.00 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 20:56:15 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 36 rows, 25 columns and 144 nonzeros
+Model fingerprint: 0x436df8ef
+Variable types: 9 continuous, 16 integer (16 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 6e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 6e+00]
+  RHS range        [2e+00, 1e+01]
+Found heuristic solution: objective 6.0000000
+Presolve removed 4 rows and 0 columns
+Presolve time: 0.00s
+Presolved: 32 rows, 25 columns, 140 nonzeros
+Variable types: 9 continuous, 16 integer (16 binary)
+
+Root relaxation: objective 3.000000e+00, 10 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    3.00000    0    9    6.00000    3.00000  50.0%     -    0s
+     0     0    3.00000    0   10    6.00000    3.00000  50.0%     -    0s
+     0     0    6.00000    0    4    6.00000    6.00000  0.00%     -    0s
+
+Cutting planes:
+  Learned: 1
+  Gomory: 6
+  Cover: 3
+  MIR: 16
+
+Explored 1 nodes (94 simplex iterations) in 0.02 seconds (0.00 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:05:11 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:06:22 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:07:06 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:07:51 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:08:42 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:19:35 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 210 rows, 121 columns and 900 nonzeros
+Model fingerprint: 0xe8c713d0
+Variable types: 21 continuous, 100 integer (100 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 8e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 8e+00]
+  RHS range        [1e+00, 2e+01]
+Presolve removed 13 rows and 3 columns
+Presolve time: 0.01s
+Presolved: 197 rows, 118 columns, 887 nonzeros
+Variable types: 21 continuous, 97 integer (97 binary)
+
+Root relaxation: objective 3.000000e+00, 46 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    3.00000    0   12          -    3.00000      -     -    0s
+     0     0    3.00000    0   28          -    3.00000      -     -    0s
+H    0     0                       6.0000000    3.17685  47.1%     -    0s
+     0     0    3.50691    0   19    6.00000    3.50691  41.6%     -    0s
+     0     0    3.50691    0   20    6.00000    3.50691  41.6%     -    0s
+     0     0    3.50691    0   27    6.00000    3.50691  41.6%     -    0s
+     0     0    3.53037    0   28    6.00000    3.53037  41.2%     -    0s
+     0     0    3.54745    0   27    6.00000    3.54745  40.9%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    4    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    8    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    6    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    6    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+     0     2    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+ 16728  1597    5.00000   31   26    6.00000    5.00000  16.7%  20.3    5s
+ 47117   357     cutoff   33         6.00000    5.00000  16.7%  21.3   10s
+
+Cutting planes:
+  Learned: 56
+  Gomory: 79
+  Cover: 82
+  Implied bound: 4
+  Projected implied bound: 1
+  MIR: 208
+  Mixing: 129
+  StrongCG: 15
+  Flow cover: 1957
+  Inf proof: 39
+  RLT: 22
+
+Explored 51538 nodes (1110257 simplex iterations) in 10.72 seconds (7.35 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:21:22 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 210 rows, 121 columns and 900 nonzeros
+Model fingerprint: 0xe8c713d0
+Variable types: 21 continuous, 100 integer (100 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 8e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 8e+00]
+  RHS range        [1e+00, 2e+01]
+Presolve removed 13 rows and 3 columns
+Presolve time: 0.00s
+Presolved: 197 rows, 118 columns, 887 nonzeros
+Variable types: 21 continuous, 97 integer (97 binary)
+
+Root relaxation: objective 3.000000e+00, 46 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    3.00000    0   12          -    3.00000      -     -    0s
+     0     0    3.00000    0   28          -    3.00000      -     -    0s
+H    0     0                       6.0000000    3.17685  47.1%     -    0s
+     0     0    3.50691    0   19    6.00000    3.50691  41.6%     -    0s
+     0     0    3.50691    0   20    6.00000    3.50691  41.6%     -    0s
+     0     0    3.50691    0   27    6.00000    3.50691  41.6%     -    0s
+     0     0    3.53037    0   28    6.00000    3.53037  41.2%     -    0s
+     0     0    3.54745    0   27    6.00000    3.54745  40.9%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    4    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    8    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    6    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    6    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+     0     2    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+ 15661  1673     cutoff   36         6.00000    4.50000  25.0%  20.0    5s
+ 42097   623    5.00000   32   24    6.00000    5.00000  16.7%  21.3   10s
+
+Cutting planes:
+  Learned: 56
+  Gomory: 79
+  Cover: 82
+  Implied bound: 4
+  Projected implied bound: 1
+  MIR: 208
+  Mixing: 129
+  StrongCG: 15
+  Flow cover: 1957
+  Inf proof: 39
+  RLT: 22
+
+Explored 51538 nodes (1110257 simplex iterations) in 11.54 seconds (7.35 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:21:34 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 36 rows, 25 columns and 144 nonzeros
+Model fingerprint: 0x436df8ef
+Variable types: 9 continuous, 16 integer (16 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 6e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 6e+00]
+  RHS range        [2e+00, 1e+01]
+Found heuristic solution: objective 6.0000000
+Presolve removed 4 rows and 0 columns
+Presolve time: 0.00s
+Presolved: 32 rows, 25 columns, 140 nonzeros
+Variable types: 9 continuous, 16 integer (16 binary)
+
+Root relaxation: objective 3.000000e+00, 10 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    3.00000    0    9    6.00000    3.00000  50.0%     -    0s
+     0     0    3.00000    0   10    6.00000    3.00000  50.0%     -    0s
+     0     0    6.00000    0    4    6.00000    6.00000  0.00%     -    0s
+
+Cutting planes:
+  Learned: 1
+  Gomory: 6
+  Cover: 3
+  MIR: 16
+
+Explored 1 nodes (94 simplex iterations) in 0.01 seconds (0.00 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:21:34 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 55 rows, 36 columns and 220 nonzeros
+Model fingerprint: 0x8a575438
+Variable types: 11 continuous, 25 integer (25 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 6e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 6e+00]
+  RHS range        [2e+00, 1e+01]
+Found heuristic solution: objective 6.0000000
+Presolve removed 6 rows and 1 columns
+Presolve time: 0.00s
+Presolved: 49 rows, 35 columns, 214 nonzeros
+Variable types: 11 continuous, 24 integer (24 binary)
+
+Root relaxation: objective 2.000000e+00, 14 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    2.00000    0    7    6.00000    2.00000  66.7%     -    0s
+     0     0    2.18182    0   18    6.00000    2.18182  63.6%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   17    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   17    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   16    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   10    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   10    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     2    4.00000    0    8    6.00000    4.00000  33.3%     -    0s
+
+Cutting planes:
+  Learned: 9
+  Gomory: 4
+  Cover: 2
+  MIR: 46
+  Inf proof: 3
+  RLT: 2
+
+Explored 667 nodes (2942 simplex iterations) in 0.05 seconds (0.01 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:21:34 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 253 rows, 144 columns and 1078 nonzeros
+Model fingerprint: 0x38560b62
+Variable types: 23 continuous, 121 integer (121 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+01]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+01]
+  RHS range        [1e+00, 2e+01]
+Presolve removed 15 rows and 4 columns
+Presolve time: 0.00s
+Presolved: 238 rows, 140 columns, 1063 nonzeros
+Variable types: 23 continuous, 117 integer (117 binary)
+
+Root relaxation: objective 2.000000e+00, 73 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    2.00000    0   34          -    2.00000      -     -    0s
+     0     0    2.25000    0   65          -    2.25000      -     -    0s
+     0     0    3.00000    0   57          -    3.00000      -     -    0s
+     0     0    4.00000    0   47          -    4.00000      -     -    0s
+     0     0    4.00000    0   49          -    4.00000      -     -    0s
+     0     0    4.00000    0   40          -    4.00000      -     -    0s
+     0     0    4.00000    0   33          -    4.00000      -     -    0s
+     0     0    4.00000    0   14          -    4.00000      -     -    0s
+     0     0    4.00000    0   23          -    4.00000      -     -    0s
+     0     0    4.00000    0   16          -    4.00000      -     -    0s
+     0     0    4.00000    0   23          -    4.00000      -     -    0s
+     0     0    4.00000    0   18          -    4.00000      -     -    0s
+     0     0    4.00000    0   15          -    4.00000      -     -    0s
+     0     2    4.00000    0   15          -    4.00000      -     -    0s
+H 2037  1979                      10.0000000    6.00000  40.0%   4.9    0s
+ 91868 11463    9.00000   40    7   10.00000    7.00000  30.0%   7.1    5s
+ 276232 14115    8.00000   38   19   10.00000    8.00000  20.0%   5.5   10s
+ 444313  9190     cutoff   44        10.00000    9.00000  10.0%   5.7   15s
+ 612894  2049     cutoff   40        10.00000    9.00000  10.0%   6.1   20s
+
+Cutting planes:
+  Learned: 12
+  Gomory: 5
+  Cover: 4
+  Implied bound: 6
+  Flow cover: 19
+  Inf proof: 52
+  Zero half: 1
+
+Explored 701022 nodes (4337318 simplex iterations) in 22.88 seconds (7.69 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 10 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 1.000000000000e+01, best bound 1.000000000000e+01, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:21:57 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:21:59 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:22:10 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:22:28 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:24:13 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 210 rows, 121 columns and 900 nonzeros
+Model fingerprint: 0xe8c713d0
+Variable types: 21 continuous, 100 integer (100 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 8e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 8e+00]
+  RHS range        [1e+00, 2e+01]
+Presolve removed 13 rows and 3 columns
+Presolve time: 0.00s
+Presolved: 197 rows, 118 columns, 887 nonzeros
+Variable types: 21 continuous, 97 integer (97 binary)
+
+Root relaxation: objective 3.000000e+00, 46 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    3.00000    0   12          -    3.00000      -     -    0s
+     0     0    3.00000    0   28          -    3.00000      -     -    0s
+H    0     0                       6.0000000    3.17685  47.1%     -    0s
+     0     0    3.50691    0   19    6.00000    3.50691  41.6%     -    0s
+     0     0    3.50691    0   20    6.00000    3.50691  41.6%     -    0s
+     0     0    3.50691    0   27    6.00000    3.50691  41.6%     -    0s
+     0     0    3.53037    0   28    6.00000    3.53037  41.2%     -    0s
+     0     0    3.54745    0   27    6.00000    3.54745  40.9%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   20    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    4    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    8    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    6    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    6    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+     0     2    4.00000    0    7    6.00000    4.00000  33.3%     -    0s
+ 13143  1668 infeasible   28         6.00000    4.06667  32.2%  19.5    5s
+ 42097   623    5.00000   32   24    6.00000    5.00000  16.7%  21.3   10s
+
+Cutting planes:
+  Learned: 56
+  Gomory: 79
+  Cover: 82
+  Implied bound: 4
+  Projected implied bound: 1
+  MIR: 208
+  Mixing: 129
+  StrongCG: 15
+  Flow cover: 1957
+  Inf proof: 39
+  RLT: 22
+
+Explored 51538 nodes (1110257 simplex iterations) in 11.51 seconds (7.35 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:24:25 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 36 rows, 25 columns and 144 nonzeros
+Model fingerprint: 0x436df8ef
+Variable types: 9 continuous, 16 integer (16 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 6e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 6e+00]
+  RHS range        [2e+00, 1e+01]
+Found heuristic solution: objective 6.0000000
+Presolve removed 4 rows and 0 columns
+Presolve time: 0.00s
+Presolved: 32 rows, 25 columns, 140 nonzeros
+Variable types: 9 continuous, 16 integer (16 binary)
+
+Root relaxation: objective 3.000000e+00, 10 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    3.00000    0    9    6.00000    3.00000  50.0%     -    0s
+     0     0    3.00000    0   10    6.00000    3.00000  50.0%     -    0s
+     0     0    6.00000    0    4    6.00000    6.00000  0.00%     -    0s
+
+Cutting planes:
+  Learned: 1
+  Gomory: 6
+  Cover: 3
+  MIR: 16
+
+Explored 1 nodes (94 simplex iterations) in 0.02 seconds (0.00 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:24:26 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 55 rows, 36 columns and 220 nonzeros
+Model fingerprint: 0x8a575438
+Variable types: 11 continuous, 25 integer (25 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 6e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 6e+00]
+  RHS range        [2e+00, 1e+01]
+Found heuristic solution: objective 6.0000000
+Presolve removed 6 rows and 1 columns
+Presolve time: 0.00s
+Presolved: 49 rows, 35 columns, 214 nonzeros
+Variable types: 11 continuous, 24 integer (24 binary)
+
+Root relaxation: objective 2.000000e+00, 14 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    2.00000    0    7    6.00000    2.00000  66.7%     -    0s
+     0     0    2.18182    0   18    6.00000    2.18182  63.6%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   17    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   17    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   16    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   18    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   10    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   10    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     0    4.00000    0   12    6.00000    4.00000  33.3%     -    0s
+     0     2    4.00000    0    8    6.00000    4.00000  33.3%     -    0s
+
+Cutting planes:
+  Learned: 9
+  Gomory: 4
+  Cover: 2
+  MIR: 46
+  Inf proof: 3
+  RLT: 2
+
+Explored 667 nodes (2942 simplex iterations) in 0.09 seconds (0.01 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 6 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 6.000000000000e+00, best bound 6.000000000000e+00, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:24:26 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Set parameter TimeLimit to value 600
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (linux64 - "Ubuntu 22.04.5 LTS")
+
+CPU model: Intel(R) Core(TM) Ultra 7 155H, instruction set [SSE2|AVX|AVX2]
+Thread count: 11 physical cores, 22 logical processors, using up to 22 threads
+
+Non-default parameters:
+TimeLimit  600
+
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+Optimize a model with 253 rows, 144 columns and 1078 nonzeros
+Model fingerprint: 0x38560b62
+Variable types: 23 continuous, 121 integer (121 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+01]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+01]
+  RHS range        [1e+00, 2e+01]
+Presolve removed 15 rows and 4 columns
+Presolve time: 0.00s
+Presolved: 238 rows, 140 columns, 1063 nonzeros
+Variable types: 23 continuous, 117 integer (117 binary)
+
+Root relaxation: objective 2.000000e+00, 73 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0    2.00000    0   34          -    2.00000      -     -    0s
+     0     0    2.25000    0   65          -    2.25000      -     -    0s
+     0     0    3.00000    0   57          -    3.00000      -     -    0s
+     0     0    4.00000    0   47          -    4.00000      -     -    0s
+     0     0    4.00000    0   49          -    4.00000      -     -    0s
+     0     0    4.00000    0   40          -    4.00000      -     -    0s
+     0     0    4.00000    0   33          -    4.00000      -     -    0s
+     0     0    4.00000    0   14          -    4.00000      -     -    0s
+     0     0    4.00000    0   23          -    4.00000      -     -    0s
+     0     0    4.00000    0   16          -    4.00000      -     -    0s
+     0     0    4.00000    0   23          -    4.00000      -     -    0s
+     0     0    4.00000    0   18          -    4.00000      -     -    0s
+     0     0    4.00000    0   15          -    4.00000      -     -    0s
+     0     2    4.00000    0   15          -    4.00000      -     -    0s
+H 2037  1979                      10.0000000    6.00000  40.0%   4.9    0s
+ 54427 10834 infeasible   40        10.00000    7.00000  30.0%   6.7    5s
+ 232344 13635    9.00000   52   11   10.00000    8.00000  20.0%   5.5   10s
+ 383187 14713    9.00000   41   15   10.00000    8.00000  20.0%   5.7   15s
+ 521139  4273     cutoff   58        10.00000    9.00000  10.0%   5.9   20s
+ 661065  1064     cutoff   43        10.00000    9.00000  10.0%   6.1   25s
+
+Cutting planes:
+  Learned: 12
+  Gomory: 5
+  Cover: 4
+  Implied bound: 6
+  Flow cover: 19
+  Inf proof: 52
+  Zero half: 1
+
+Explored 701022 nodes (4337318 simplex iterations) in 26.61 seconds (7.69 work units)
+Thread count was 22 (of 22 available processors)
+
+Solution count 1: 10 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 1.000000000000e+01, best bound 1.000000000000e+01, gap 0.0000%
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:24:53 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:24:55 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:25:07 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw
+
+Gurobi 12.0.3 (linux64, C++) logging started Mon Nov 17 21:25:21 2025
+
+Set parameter WLSAccessID
+Set parameter WLSSecret
+Set parameter LicenseID to value 2641199
+Set parameter LogFile to value "gurobi.log"
+Academic license 2641199 - for non-commercial use only - registered to b1___@ntu.edu.tw

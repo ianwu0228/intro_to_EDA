@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+xmlns:xlink="http://www.w3.org/2020/xlink" version="1.1"
+viewBox=" -15 -30 150 120" preserveAspectRatio="xMinYMin meet">
+<g transform=" scale(1,-1)">
+<rect x="0" y="0" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="0" y="-15" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="0" y="-30" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="0" y="-45" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="0" y="-60" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="0" y="-75" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="15" y="0" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="15" y="-15" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="15" y="-30" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="15" y="-45" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="15" y="-60" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="15" y="-75" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="30" y="0" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="30" y="-15" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="30" y="-30" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="30" y="-45" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="30" y="-60" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="30" y="-75" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="45" y="0" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="45" y="-15" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="45" y="-30" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="45" y="-45" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="45" y="-60" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="45" y="-75" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="60" y="0" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="60" y="-15" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="60" y="-30" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="60" y="-45" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="60" y="-60" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="60" y="-75" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="75" y="0" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="75" y="-15" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="75" y="-30" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="75" y="-45" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="75" y="-60" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="75" y="-75" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="90" y="0" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="90" y="-15" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="90" y="-30" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="90" y="-45" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="90" y="-60" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="90" y="-75" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="105" y="0" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="105" y="-15" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="105" y="-30" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="105" y="-45" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="105" y="-60" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="105" y="-75" width="15" height="15" fill="white" stroke="black" stroke-width="0.5"/>
+<rect x="20" y="-70" width="95" height="5" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="20" y="-70" width="5" height="50" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="20" y="-25" width="50" height="5" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="65" y="-25" width="5" height="35" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="5" y="5" width="65" height="5" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="35" y="-40" width="65" height="5" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="95" y="-40" width="5" height="20" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="95" y="-25" width="20" height="5" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="110" y="-25" width="5" height="20" fill="green" stroke="green" stroke-width="0.5"/>
+<rect x="30" y="-60" width="90" height="15" fill="red" stroke="red" stroke-width="0.5"/>
+<rect x="0" y="-15" width="60" height="15" fill="red" stroke="red" stroke-width="0.5"/>
+<rect x="90" y="-15" width="15" height="30" fill="red" stroke="red" stroke-width="0.5"/>
+<rect x="105" y="-75" width="15" height="15" fill="#E2DB9B" stroke="#E2DB9B" stroke-width="0.5"/>
+<rect x="0" y="0" width="15" height="15" fill="#E2DB9B" stroke="#E2DB9B" stroke-width="0.5"/>
+<rect x="30" y="-45" width="15" height="15" fill="#2DA238" stroke="#2DA238" stroke-width="0.5"/>
+<rect x="105" y="-15" width="15" height="15" fill="#2DA238" stroke="#2DA238" stroke-width="0.5"/>
+</g>
+</svg>
