@@ -1,3 +1,716 @@
+==============================================================================
+File: src/floorplanner.cpp
+==============================================================================
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <cmath>
+#include <algorithm>
+#include <iomanip>
+#include "floorplanner.h"
+
+using namespace std;
+
+// 1. Parsing Logic
+void Floorplanner::parseInput(fstream &inputFile)
+{
+    string keyword;
+
+    if (!(inputFile >> keyword) || keyword != "CHIP")
+    {
+        cerr << "Error: Expected 'CHIP'" << endl;
+        exit(1);
+    }
+    inputFile >> _chipWidth >> _chipHeight;
+
+    int numSoft;
+    if (!(inputFile >> keyword) || keyword != "SOFTMODULE")
+    {
+        cerr << "Error: Expected 'SOFTMODULE'" << endl;
+        exit(1);
+    }
+    inputFile >> numSoft;
+    _soft_modules.reserve(numSoft);
+
+    for (int i = 0; i < numSoft; ++i)
+    {
+        string name;
+        size_t area;
+        inputFile >> name >> area;
+        Block b(name, area);
+        b.setID(i);
+        _soft_modules.push_back(b);
+    }
+
+    int numFixed;
+    if (!(inputFile >> keyword) || keyword != "FIXEDMODULE")
+    {
+        cerr << "Error: Expected 'FIXEDMODULE'" << endl;
+        exit(1);
+    }
+    inputFile >> numFixed;
+    _fixed_modules.reserve(numFixed);
+
+    for (int i = 0; i < numFixed; ++i)
+    {
+        string name;
+        size_t x, y, w, h;
+        inputFile >> name >> x >> y >> w >> h;
+        Block b(name, w, h, x, y);
+        b.setID(numSoft + i);
+        _fixed_modules.push_back(b);
+    }
+
+    // Build Map (Wait until vectors are filled so pointers don't invalidate)
+    for (auto &b : _soft_modules)
+        _name2Terminal[b.getName()] = &b;
+    for (auto &b : _fixed_modules)
+        _name2Terminal[b.getName()] = &b;
+
+    int numConnections;
+    if (!(inputFile >> keyword) || keyword != "CONNECTION")
+    {
+        cerr << "Error: Expected 'CONNECTION'" << endl;
+        exit(1);
+    }
+    inputFile >> numConnections;
+
+    _net_array.clear();
+    for (int i = 0; i < numConnections; ++i)
+    {
+        string name1, name2;
+        int qty;
+        inputFile >> name1 >> name2 >> qty;
+
+        Terminal *t1 = _name2Terminal[name1];
+        Terminal *t2 = _name2Terminal[name2];
+
+        if (!t1 || !t2)
+        {
+            cerr << "Error: Unknown module " << name1 << " or " << name2 << endl;
+            continue;
+        }
+
+        // Create 'qty' nets (Standard HPWL approach)
+        for (int k = 0; k < qty; ++k)
+        {
+            Net net;
+            net.setDegree(2);
+            net.addTerm(t1);
+            net.addTerm(t2);
+            _net_array.push_back(net);
+        }
+    }
+
+    // Initialize Tree with ONLY Soft Blocks
+    _tree = new Tree(_soft_modules);
+}
+
+void Floorplanner::floorplan()
+{
+    _tree->buildInitial();
+    simulatedAnnealing();
+}
+
+// 2. Cost Calculation
+double Floorplanner::computeArea()
+{
+    // Current bounding box area of soft modules
+    size_t minX = _chipWidth, maxX = 0;
+    size_t minY = _chipHeight, maxY = 0;
+
+    if (_soft_modules.empty())
+        return 0;
+
+    for (const auto &blk : _soft_modules)
+    {
+        minX = min(minX, blk.getX1());
+        maxX = max(maxX, blk.getX2());
+        minY = min(minY, blk.getY1());
+        maxY = max(maxY, blk.getY2());
+    }
+    return (double)(maxX - minX) * (maxY - minY);
+}
+
+double Floorplanner::computeWirelength()
+{
+    double total = 0.0;
+    for (Net &net : _net_array)
+    {
+        total += net.calcHPWL();
+    }
+    return total;
+}
+
+double Floorplanner::computeFixedOverlapPenalty()
+{
+    double totalOverlap = 0;
+    for (const auto &soft : _soft_modules)
+    {
+        size_t sx1 = soft.getX1();
+        size_t sx2 = soft.getX2();
+        size_t sy1 = soft.getY1();
+        size_t sy2 = soft.getY2();
+
+        for (const auto &fixed : _fixed_modules)
+        {
+            size_t fx1 = fixed.getX1();
+            size_t fx2 = fixed.getX2();
+            size_t fy1 = fixed.getY1();
+            size_t fy2 = fixed.getY2();
+
+            size_t ix1 = max(sx1, fx1);
+            size_t ix2 = min(sx2, fx2);
+            size_t iy1 = max(sy1, fy1);
+            size_t iy2 = min(sy2, fy2);
+
+            if (ix1 < ix2 && iy1 < iy2)
+            {
+                totalOverlap += (double)(ix2 - ix1) * (iy2 - iy1);
+            }
+        }
+    }
+    return totalOverlap;
+}
+
+double Floorplanner::computeBoundaryPenalty()
+{
+    double totalViolation = 0;
+    for (const auto &soft : _soft_modules)
+    {
+        // Violations outside (0, 0) to (_chipWidth, _chipHeight)
+        double vX = 0, vY = 0;
+        if (soft.getX2() > _chipWidth)
+            vX = soft.getX2() - _chipWidth;
+        if (soft.getY2() > _chipHeight)
+            vY = soft.getY2() - _chipHeight;
+
+        // Simple linear penalty or area-based
+        if (vX > 0)
+            totalViolation += vX * soft.getHeight();
+        if (vY > 0)
+            totalViolation += vY * soft.getWidth();
+    }
+    return totalViolation;
+}
+
+double Floorplanner::computeCost()
+{
+    double W = computeWirelength();
+    double Area = computeArea(); // Optional, but usually good to keep area tight
+    double Boundary = computeBoundaryPenalty();
+    double Overlap = computeFixedOverlapPenalty();
+
+    // Avoid division by zero
+    double nW = (_normWL > 0) ? _normWL : 1.0;
+    double nA = (_normArea > 0) ? _normArea : 1.0;
+    double nB = (_normBoundary > 0) ? _normBoundary : 1.0;
+    double nO = (_normOverlap > 0) ? _normOverlap : 1.0;
+
+    // Cost = alpha*Area + (1-alpha)*WL + Penalties
+    // Note: The contest only cares about WL, but during annealing we need Area to guide packing.
+    // _gamma and _delta should be very large.
+
+    return _alpha * (Area / nA) + (1.0 - _alpha) * (W / nW) + _gamma * (Boundary / nB) + _delta * (Overlap / nO);
+}
+
+void Floorplanner::computeNormalizationFactors(double &areaNorm, double &wlNorm,
+                                               double &boundaryNorm, double &overlapNorm, int sampleSize)
+{
+    double totalArea = 0, totalWL = 0, totalBound = 0, totalOverlap = 0;
+
+    for (int i = 0; i < sampleSize; ++i)
+    {
+        _tree->rotateRandom();
+        _tree->deleteAndInsert();
+        _tree->resizeRandom(); // Don't forget resize!
+        _tree->pack();
+
+        totalArea += computeArea();
+        totalWL += computeWirelength();
+        totalBound += computeBoundaryPenalty();
+        totalOverlap += computeFixedOverlapPenalty();
+    }
+
+    areaNorm = totalArea / sampleSize;
+    wlNorm = totalWL / sampleSize;
+    // Add small epsilon to avoid zero
+    boundaryNorm = (totalBound / sampleSize) + 1.0;
+    overlapNorm = (totalOverlap / sampleSize) + 1.0;
+}
+
+// 3. Simulated Annealing
+void Floorplanner::simulatedAnnealing()
+{
+    double T = 10000.0;
+    const double T_min = 0.1;
+    const double cooling_rate = 0.98;
+    const int iterations = 500; // Increase for better quality
+
+    // Normalization
+    computeNormalizationFactors(_normArea, _normWL, _normBoundary, _normOverlap, 50);
+
+    _tree->pack();
+    double prevCost = computeCost();
+    double bestCost = prevCost;
+
+    // We must save the "best state". Since Tree holds pointers to _soft_modules,
+    // we need to save the Tree structure AND the Block dimensions (because resize changes them).
+    Tree bestTree = *_tree;
+    vector<Block> bestBlocks = _soft_modules; // Save block states (dims)
+
+    while (T > T_min)
+    {
+        for (int i = 0; i < iterations; ++i)
+        {
+            Tree backupTree = *_tree;
+            vector<Block> backupBlocks = _soft_modules; // Expensive copy, optimize later if needed
+
+            double oldCost = prevCost;
+
+            // Perturb
+            double r = (double)rand() / RAND_MAX;
+            if (r < 0.2)
+                _tree->resizeRandom();
+            else if (r < 0.5)
+                _tree->rotateRandom();
+            else if (r < 0.75)
+                _tree->swapRandomNodes();
+            else
+                _tree->deleteAndInsert();
+
+            _tree->pack();
+            double newCost = computeCost();
+            double delta = newCost - oldCost;
+
+            bool accept = (delta < 0) || ((double)rand() / RAND_MAX < exp(-delta / T));
+
+            if (accept)
+            {
+                prevCost = newCost;
+                if (newCost < bestCost)
+                {
+                    bestCost = newCost;
+                    bestTree = *_tree;
+                    bestBlocks = _soft_modules;
+                }
+            }
+            else
+            {
+                *_tree = backupTree;
+                _soft_modules = backupBlocks; // Restore dimensions
+            }
+        }
+        T *= cooling_rate;
+    }
+
+    // Restore Best
+    *_tree = bestTree;
+    _soft_modules = bestBlocks;
+    _tree->pack();
+    outputWirelength = (size_t)computeWirelength();
+}
+
+// 4. Output Logic (ICCAD Format)
+void Floorplanner::outputResults(fstream &outputFile, double runtime)
+{
+    // ICCAD Format:
+    // HPWL <value>
+    // SOFTMODULE <num>
+    // <name> <num_corners>
+    // <x> <y> ... (corners)
+
+    // We strictly output rectangles (4 corners) for soft modules
+
+    outputFile << "HPWL " << fixed << setprecision(1) << (double)outputWirelength << endl;
+
+    outputFile << "SOFTMODULE " << _soft_modules.size() << endl;
+    for (const auto &b : _soft_modules)
+    {
+        outputFile << b.getName() << " 4" << endl;
+        // Output 4 corners clockwise starting from bottom-left?
+        // Contest usually accepts: (x1,y1) (x1,y2) (x2,y2) (x2,y1)
+        // Check strict contest rules. Assuming standard rectangle output:
+        outputFile << b.getX1() << " " << b.getY1() << endl;
+        outputFile << b.getX1() << " " << b.getY2() << endl;
+        outputFile << b.getX2() << " " << b.getY2() << endl;
+        outputFile << b.getX2() << " " << b.getY1() << endl;
+    }
+}
+
+
+==============================================================================
+File: src/floorplanner.h
+==============================================================================
+#ifndef FLOORPLANNER_H
+#define FLOORPLANNER_H
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <unordered_map>
+#include "module.h"
+#include "node.h"
+#include "tree.h"
+
+using namespace std;
+
+class Floorplanner
+{
+public:
+    // Constructor
+    Floorplanner(fstream &inputFile, double alpha)
+    {
+        _alpha = alpha;
+        parseInput(inputFile);
+    }
+
+    // Main routine
+    void floorplan();
+
+    // Data Members
+    double _alpha;          // Weight for Area vs Wirelength
+    double _beta = 0.5;     // Weight for Aspect Ratio penalty
+    double _gamma = 1000.0; // Weight for Boundary penalty
+    double _delta = 1000.0; // Weight for Fixed Overlap penalty
+
+    size_t _chipWidth;  // Fixed Outline Width (from CHIP)
+    size_t _chipHeight; // Fixed Outline Height (from CHIP)
+
+    // Separate vectors for Soft and Fixed modules
+    vector<Block> _soft_modules;
+    vector<Block> _fixed_modules;
+    vector<Net> _net_array;
+
+    unordered_map<string, Terminal *> _name2Terminal;
+
+    Tree *_tree;
+
+    // Parsing
+    void parseInput(fstream &inputFile);
+
+    // Output results
+    size_t getOutputWirelength() const { return outputWirelength; }
+    void outputResults(fstream &outputFile, double runtime);
+
+    // Optimization & Cost
+    void simulatedAnnealing(); // Added this!
+
+    double computeWirelength();
+    double computeArea(); // Added this!
+    double computeCost(); // Signature updated to take no args
+
+    // Helper to calculate normalization factors
+    void computeNormalizationFactors(double &areaNorm, double &wlNorm,
+                                     double &boundaryNorm, double &overlapNorm,
+                                     int sampleSize);
+
+    // Penalties
+    double computeFixedOverlapPenalty();
+    double computeBoundaryPenalty();
+
+private:
+    size_t outputWirelength;
+    double _normWL = 1.0;
+    double _normArea = 1.0;
+    double _normBoundary = 1.0;
+    double _normOverlap = 1.0;
+};
+
+#endif // FLOORPLANNER_H
+
+
+==============================================================================
+File: src/main.cpp
+==============================================================================
+// main.cpp
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <ctime>
+#include <cstdlib>
+#include <chrono>
+
+#include "floorplanner.h"
+
+using namespace std;
+
+int main(int argc, char **argv)
+{
+    srand(static_cast<unsigned int>(time(0)));
+    fstream input_file, output;
+    double alpha = 0.5; // Default alpha
+
+    // ICCAD Format: ./fp [input_file] [output_file]
+    // Or your Makefile format: ./fp [alpha] [input] [output] (Let's support your Makefile format)
+
+    if (argc == 4)
+    {
+        cout << "Makefile Format Detected." << endl;
+        // format: ./fp <alpha> <input> <output>
+        alpha = stod(argv[1]);
+        input_file.open(argv[2], ios::in);
+        output.open(argv[3], ios::out);
+
+        if (!input_file)
+        {
+            cerr << "Cannot open input file: " << argv[2] << endl;
+            exit(1);
+        }
+        if (!output)
+        {
+            cerr << "Cannot open output file: " << argv[3] << endl;
+            exit(1);
+        }
+    }
+    // ICCAD Contest format often uses: ./binary input output
+    else if (argc == 3)
+    {
+        cout << "ICCAD Format Detected." << endl;
+        input_file.open(argv[1], ios::in);
+        output.open(argv[2], ios::out);
+        alpha = 0.5; // Default if not provided
+    }
+    else
+    {
+        cerr << "Usage: ./Floorplanner <alpha> <input file> <output file>" << endl;
+        exit(1);
+    }
+
+    // New Constructor: Single input file
+    Floorplanner *fp = new Floorplanner(input_file, alpha);
+    cout << "Floorplanner initialized with alpha = " << alpha << endl;
+
+    // Start timing
+    auto start_time = chrono::high_resolution_clock::now();
+
+    fp->floorplan();
+
+    // End timing
+    auto end_time = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(end_time - start_time);
+
+    cout << "Time taken: " << duration.count() * 0.001 << " s" << endl;
+
+    // Output results
+    fp->outputResults(output, duration.count() * 0.001);
+
+    return 0;
+}
+
+
+==============================================================================
+File: src/module.h
+==============================================================================
+#ifndef MODULE_H
+#define MODULE_H
+
+#include <vector>
+#include <string>
+#include <algorithm> // for std::max, std::min
+#include <cmath>     // for std::sqrt
+#include <limits>
+#include "node.h" // Node
+
+using namespace std;
+
+class Terminal
+{
+public:
+    // constructor and destructor
+    Terminal(string &name, size_t x, size_t y) : _name(name), _x1(x), _y1(y), _x2(x), _y2(y) {}
+    virtual ~Terminal() {} // Virtual destructor is safer for inheritance
+
+    // basic access methods
+    string getName() const { return _name; } // Added const
+    size_t getX1() const { return _x1; }
+    size_t getX2() const { return _x2; }
+    size_t getY1() const { return _y1; }
+    size_t getY2() const { return _y2; }
+
+    // Center coordinates for HPWL calculation
+    size_t getCenterX() const { return (_x1 + _x2) / 2; }
+    size_t getCenterY() const { return (_y1 + _y2) / 2; }
+
+    // set functions
+    void setName(string &name) { _name = name; }
+    void setPos(size_t x1, size_t y1, size_t x2, size_t y2)
+    {
+        _x1 = x1;
+        _y1 = y1;
+        _x2 = x2;
+        _y2 = y2;
+    }
+    void setID(size_t id) { _id = id; }
+
+protected:
+    string _name; // module name
+    size_t _x1;   // min x coordinate of the terminal
+    size_t _y1;   // min y coordinate of the terminal
+    size_t _x2;   // max x coordinate of the terminal
+    size_t _y2;   // max y coordinate of the terminal
+    size_t _id;
+};
+
+class Block : public Terminal
+{
+public:
+    // Constructor for SOFT modules (Area is known, Dimensions flexible)
+    Block(string &name, size_t minArea) : Terminal(name, 0, 0), _minArea(minArea), _isFixed(false)
+    {
+        // Default to square shape initially
+        _w = static_cast<size_t>(sqrt(minArea));
+        _h = _w;
+        if (_w * _h < _minArea)
+            _h++; // Ensure area constraint
+    }
+
+    // Constructor for FIXED modules (Dimensions and Position known)
+    Block(string &name, size_t w, size_t h, size_t x, size_t y) : Terminal(name, x, y), _w(w), _h(h), _minArea(w * h), _isFixed(true)
+    {
+        _x2 = _x1 + _w;
+        _y2 = _y1 + _h;
+    }
+
+    ~Block() {}
+
+    // basic access methods
+    size_t getWidth(bool rotate = false) const { return rotate ? _h : _w; }
+    size_t getHeight(bool rotate = false) const { return rotate ? _w : _h; }
+    size_t getArea() const { return _h * _w; }
+    size_t getMinArea() const { return _minArea; }
+    bool isFixed() const { return _isFixed; }
+
+    // set functions
+    void setWidth(size_t w) { _w = w; }
+    void setHeight(size_t h) { _h = h; }
+    void setID(size_t id) { _id = id; }
+
+    // Resize function for Soft Modules (Aspect Ratio = H / W)
+    void resize(double aspectRatio)
+    {
+        if (_isFixed)
+            return;
+
+        // Calculate W based on Area and AR: W = sqrt(Area / AR)
+        _w = static_cast<size_t>(std::sqrt(_minArea / aspectRatio));
+        // Calculate H based on W
+        if (_w == 0)
+            _w = 1; // Prevent div by zero
+        _h = static_cast<size_t>(std::ceil((double)_minArea / _w));
+
+        // Double check area constraint (integer math can be tricky)
+        if (_w * _h < _minArea)
+            _h++;
+    }
+
+    // other member functions
+    void setNode(Node *node) { _node = node; }
+    Node *getNode() { return _node; }
+
+private:
+    size_t _w;       // width of the block
+    size_t _h;       // height of the block
+    size_t _minArea; // NEW: Required minimum area
+    bool _isFixed;   // NEW: Flag for fixed modules
+    size_t _id;      // id of the block
+    Node *_node;     // pointer to the parent node
+};
+
+class Net
+{
+public:
+    Net() {}
+    ~Net() {}
+
+    const vector<Terminal *> getTermList() { return _termList; }
+    size_t getDegree() { return _netDegree; }
+
+    void addTerm(Terminal *term) { _termList.push_back(term); }
+    void setDegree(size_t degree) { _netDegree = degree; }
+
+    // Updated HPWL Calculation (Center-to-Center)
+    // The problem statement specifies center-to-center distance for Manhattan distance
+    double calcHPWL() const
+    {
+        if (_termList.empty())
+            return 0.0;
+
+        size_t minX = std::numeric_limits<size_t>::max();
+        size_t maxX = 0;
+        size_t minY = std::numeric_limits<size_t>::max();
+        size_t maxY = 0;
+
+        for (Terminal *term : _termList)
+        {
+            size_t cx = term->getCenterX();
+            size_t cy = term->getCenterY();
+
+            minX = std::min(minX, cx);
+            maxX = std::max(maxX, cx);
+            minY = std::min(minY, cy);
+            maxY = std::max(maxY, cy);
+        }
+
+        return static_cast<double>((maxX - minX) + (maxY - minY));
+    }
+
+private:
+    vector<Terminal *> _termList;
+    size_t _netDegree;
+};
+
+#endif // MODULE_H
+
+
+==============================================================================
+File: src/node.h
+==============================================================================
+#ifndef NODE_H
+#define NODE_H
+
+using namespace std;
+
+class Node
+{
+public:
+    // Constructor
+    Node(int id)
+        : _id(id), _rotated(false),
+          _parent(nullptr), _left(nullptr), _right(nullptr) {}
+
+    // Getters
+    int   getBlockIndex() const    { return _id; }
+    bool  isRotated()     const    { return _rotated;    }
+    Node* getParent()     const    { return _parent;     }
+    Node* getLeft()       const    { return _left;       }
+    Node* getRight()      const    { return _right;      }
+
+    // Setters
+    void setBlockIndex(int idx) { _id = idx;  }
+    void setRotated(bool r)     { _rotated = r;       }
+    void setParent(Node* p)     { _parent = p;        }
+    void setLeft(Node* l)       { _left = l;          }
+    void setRight(Node* r)      { _right = r;         }
+
+private:
+    int   _id;  // Index referring to a block in the Floorplanner's block array
+    bool  _rotated;     // True if this node’s block is rotated
+    Node* _parent;      // Pointer to the parent node
+    Node* _left;        // Pointer to the left child
+    Node* _right;       // Pointer to the right child
+};
+
+#endif // NODE_H
+
+
+
+==============================================================================
+File: src/tree.cpp
+==============================================================================
 #include "tree.h"
 #include <iostream>
 #include <cstdlib> // for rand()
@@ -798,8 +1511,11 @@ bool Tree::isDescendant(Node *ancestor, Node *candidate)
 void Tree::clearContour()
 {
     ContourSegment *cur = _contourHead;
+    cout << cur << endl;
+    cout << "cut->next" << cur->next << endl;
     while (cur)
     {
+        cout << "enter wbile" << endl;
         ContourSegment *next = cur->next;
         delete cur;
         cur = next;
@@ -809,7 +1525,6 @@ void Tree::clearContour()
 
 void Tree::pack()
 {
-    clearContour();
     _contourHead = new ContourSegment(0, std::numeric_limits<size_t>::max(), 0);
     pack(_root, 0); // Start at origin
 }
@@ -1114,3 +1829,115 @@ void Tree::exportToFile_visualize(fstream &output, size_t outlineW, size_t outli
 
     output.close();
 }
+
+
+==============================================================================
+File: src/tree.h
+==============================================================================
+#ifndef TREE_H
+#define TREE_H
+
+#include <vector>
+#include <cstdlib> // for rand()
+#include "node.h"
+#include "module.h" // Block, Terminal, Net
+#include <chrono>
+
+using namespace std;
+
+class Tree
+{
+public:
+    Tree(vector<Block> &blocks)
+        : _blocks(blocks), _root(nullptr)
+    {
+        // _nodes.reserve(blocks.size()); // Reserve space for nodes
+        // for (size_t i = 0; i < blocks.size(); ++i) {
+        //     _nodes.emplace_back(i); // equals to _nodes.push_back(Node(i))
+        // }
+    }
+
+    void buildInitial();                                // trivial B*-tree construction (e.g. linear left-chain)
+    void rotateRandom();                                // perturbation 1
+    void deleteAndInsert();                             // perturbation 2
+    void swapRandomNodes();                             // perturbation 3
+    void resizeRandom();                                // perturbation 4 for soft modules
+    bool isDescendant(Node *ancestor, Node *candidate); // check if candidate is a descendant of ancestor
+    Node *buildBalancedRecursive(int l, int r);         // build a balanced tree recursively
+
+    // packing related functions
+    void pack();                                             // compute (x1, y1, x2, y2) for each block
+    double findMaxY(size_t x1, size_t x2) const;             // find max y in contour between x1 and x2
+    void updateContour(size_t x1, size_t x2, size_t height); // update contour after placing a block
+    void clearContour();                                     // clear the contour list
+    void printContour() const;                               // print the contour for debugging
+    void checkContour() const;                               // check the contour for debugging
+
+    Node *getRoot() const { return _root; }
+    const vector<Node> &getNodes() const { return _nodes; }
+
+    /// Print the B*-tree structure
+    void printTree(Node *node, int depth, int &count) const;
+    int getNumofNodes() const { return _nodes.size(); }
+
+    // horizontal segment of the contour
+    struct ContourSegment
+    {
+        size_t x_start, x_end; // horizontal range
+        size_t height;         // top y of the segment
+        ContourSegment *prev;
+        ContourSegment *next;
+
+        ContourSegment(size_t x1, size_t x2, size_t h)
+            : x_start(x1), x_end(x2), height(h), prev(nullptr), next(nullptr) {}
+    };
+
+    // visualization function (for debugging)
+    // void exportToFile(const string& filename) const;
+
+    void exportToFile(fstream &output, size_t outlineW, size_t outlineH, const std::chrono::milliseconds &duration, size_t outputCost, size_t outputWL, size_t outputArea, size_t maxX, size_t maxY) const;
+    void exportToFile_visualize(fstream &output, size_t outlineW, size_t outlineH, const std::chrono::milliseconds &duration, size_t outputCost, size_t outputWL, size_t outputArea, size_t maxX, size_t maxY) const;
+
+    Tree &operator=(const Tree &other)
+    {
+        if (this != &other)
+        {
+            // Reuse the existing _blocks reference
+            _nodes = other._nodes;
+            _root = nullptr;
+
+            // Reconnect pointers in _nodes
+            for (size_t i = 0; i < _nodes.size(); ++i)
+            {
+                if (other._nodes[i].getParent())
+                    _nodes[i].setParent(&_nodes[other._nodes[i].getParent()->getBlockIndex()]);
+                if (other._nodes[i].getLeft())
+                    _nodes[i].setLeft(&_nodes[other._nodes[i].getLeft()->getBlockIndex()]);
+                if (other._nodes[i].getRight())
+                    _nodes[i].setRight(&_nodes[other._nodes[i].getRight()->getBlockIndex()]);
+            }
+
+            // Restore root
+            if (other._root)
+                _root = &_nodes[other._root->getBlockIndex()];
+        }
+        return *this;
+    }
+
+private:
+    vector<Node> _nodes;    // One node per block (1-1 mapping by index)
+    Node *_root;            // root of the B*-tree
+    vector<Block> &_blocks; // Reference to external block array
+
+    void pack(Node *v, size_t baseX); // internal recursive function
+
+    void deleteNode(Node *u);                                 // helper: remove a node from the tree
+    void insertNode(Node *u, Node *target, bool asLeftChild); // helper: insert node into new location
+
+    ContourSegment *_contourHead; // head of the contour list
+};
+
+#endif // TREE_H
+
+
+

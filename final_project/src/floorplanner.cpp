@@ -1,688 +1,337 @@
 #include <iostream>
 #include <string>
-#include <cstdlib>
+#include <vector>
+#include <fstream>
+#include <cmath>
+#include <algorithm>
+#include <iomanip>
 #include "floorplanner.h"
 
 using namespace std;
 
-void Floorplanner::parseBlockFile(istream& blockFile)
+// 1. Parsing Logic
+void Floorplanner::parseInput(fstream &inputFile)
 {
-
     string keyword;
-    blockFile >> keyword;  // should be "Outline:"
-    cout << "start parsing block file" << endl;
-    cout << keyword << endl;
-    if (keyword != "Outline:")
+
+    if (!(inputFile >> keyword) || keyword != "CHIP")
     {
-        cerr << "Error: expected 'Outline:' but got '" << keyword << "'\n";
+        cerr << "Error: Expected 'CHIP'" << endl;
         exit(1);
     }
+    inputFile >> _chipWidth >> _chipHeight;
 
-    blockFile >> _outlineWidth >> _outlineHeight;
-
-    blockFile >> keyword; // should be "NumBlocks:"
-    if (keyword != "NumBlocks:")
+    int numSoft;
+    if (!(inputFile >> keyword) || keyword != "SOFTMODULE")
     {
-        cerr << "Error: expected 'NumBlocks:' but got '" << keyword << "'\n";
+        cerr << "Error: Expected 'SOFTMODULE'" << endl;
         exit(1);
     }
+    inputFile >> numSoft;
+    _soft_modules.reserve(numSoft);
 
-    blockFile >> _numBlocks;
-
-    blockFile >> keyword; // should be "NumTerminals:"
-    if (keyword != "NumTerminals:")
+    for (int i = 0; i < numSoft; ++i)
     {
-        cerr << "Error: expected 'NumTerminals:' but got '" << keyword << "'\n";
+        string name;
+        size_t area;
+        inputFile >> name >> area;
+        Block b(name, area);
+        b.setID(i);
+        _soft_modules.push_back(b);
+    }
+
+    int numFixed;
+    if (!(inputFile >> keyword) || keyword != "FIXEDMODULE")
+    {
+        cerr << "Error: Expected 'FIXEDMODULE'" << endl;
         exit(1);
     }
+    inputFile >> numFixed;
+    _fixed_modules.reserve(numFixed);
 
-    ////////////////////// blocks //////////////// 
-    blockFile >> _numTerminals;
-
-    _block_array.reserve(_numBlocks); // Optional, for efficiency
-    for (size_t i = 0; i < _numBlocks; ++i)
+    for (int i = 0; i < numFixed; ++i)
     {
-        string blockName;
-        size_t w, h;
-        blockFile >> blockName >> w >> h;
-
-        Block newBlock(blockName, w, h);
-        newBlock.setID(i); // Set ID for the block
-        _block_array.push_back(newBlock);
-        _allTerminal_array.push_back(&_block_array[i]); // Add block to all terminals array
+        string name;
+        size_t x, y, w, h;
+        inputFile >> name >> x >> y >> w >> h;
+        Block b(name, w, h, x, y);
+        b.setID(numSoft + i);
+        _fixed_modules.push_back(b);
     }
 
-    /////////////////// terminals ////////////////
-    _terminal_array.reserve(_numTerminals);
-    for (size_t i = 0; i < _numTerminals; ++i)
+    // Build Map (Wait until vectors are filled so pointers don't invalidate)
+    for (auto &b : _soft_modules)
+        _name2Terminal[b.getName()] = &b;
+    for (auto &b : _fixed_modules)
+        _name2Terminal[b.getName()] = &b;
+
+    int numConnections;
+    if (!(inputFile >> keyword) || keyword != "CONNECTION")
     {
-        string termName, terminalKeyword;
-        size_t x, y;
-        blockFile >> termName >> terminalKeyword >> x >> y;
-
-        if (terminalKeyword != "terminal")
-        {
-            cerr << "Error: expected 'terminal' but got '" << terminalKeyword << "'\n";
-            exit(1);
-        }
-
-        Terminal newTerminal(termName, x, y);
-        newTerminal.setID(i); // Set ID for the terminal
-        _terminal_array.push_back(newTerminal);
-        _allTerminal_array.push_back(&_terminal_array[i]); // Add terminal to all terminals array
-    }
-
-    for(Terminal* t: _allTerminal_array)
-    {
-        _name2Terminal[t->getName()] = t; // Map terminal names to Terminal objects
-    }
-   
-    _tree = new Tree(_block_array);
-
-}
-
-
-
-void Floorplanner::parseNetFile(istream& netFile)
-{
-    string kw;
-    if (!(netFile >> kw) || kw != "NumNets:") {
-        cerr << "Error: expected \"NumNets:\" but got \"" << kw << "\"\n";
+        cerr << "Error: Expected 'CONNECTION'" << endl;
         exit(1);
     }
-    netFile >> _numNets;
-
-    // --- build local lookup ---
-    unordered_map<string, Terminal*> name2ptr;
-    name2ptr.reserve(_allTerminal_array.size());
-    for (Terminal* t : _allTerminal_array)
-        name2ptr[t->getName()] = t;
+    inputFile >> numConnections;
 
     _net_array.clear();
-    _net_array.reserve(_numNets);
-
-    for (size_t n = 0; n < _numNets; ++n) {
-        if (!(netFile >> kw) || kw != "NetDegree:") {
-            cerr << "Error: expected \"NetDegree:\" (net " << n << ")\n";
-            exit(1);
-        }
-        size_t deg;  netFile >> deg;
-
-        Net net;
-        net.setDegree(deg);
-
-        for (size_t k = 0; k < deg; ++k) {
-            string name; netFile >> name;
-            auto it = name2ptr.find(name);
-            if (it == name2ptr.end()) {
-                cerr << "Error: name \"" << name << "\" not found (net " << n << ")\n";
-                exit(1);
-            }
-            net.addTerm(it->second);
-        }
-        _net_array.push_back(std::move(net));
-    }
-}
-
-
-
-void Floorplanner::printBlocks()
-{   
-    cout << "===================================" << endl;
-    cout << "Blocks = " << _numBlocks << endl;
-    cout << "Name Width Height" << endl;
-    cout << "------------------" << endl;
-
-    for(int i = 0; i < _block_array.size(); i++)
+    for (int i = 0; i < numConnections; ++i)
     {
-        cout << _block_array[i].getName() << " " << _block_array[i].getWidth() << " " << _block_array[i].getHeight() << endl;
-    }
-    cout << "===================================" << endl;
-}
+        string name1, name2;
+        int qty;
+        inputFile >> name1 >> name2 >> qty;
 
-void Floorplanner::printTerminals()
-{
-    cout << "===================================" << endl;
-    cout << "Terminals = " << _numTerminals << endl;
-    cout << "Name X Y" << endl;
-    cout << "------------------" << endl;
+        Terminal *t1 = _name2Terminal[name1];
+        Terminal *t2 = _name2Terminal[name2];
 
-    for(int i = 0; i < _terminal_array.size(); i++)
-    {
-        cout << _terminal_array[i].getName() << " " << _terminal_array[i].getX1() << " " << _terminal_array[i].getY1() << endl;
-    }
-    cout << "===================================" << endl;
-}
-
-void Floorplanner::printNets()
-{
-    cout << "===================================" << endl;
-    cout << "Nets = " << _numNets << endl;
-    cout << "Name Terminals" << endl;
-    cout << "------------------" << endl;
-    cout << "netarray size = " << _net_array.size() << endl;
-    for(int i = 0; i < _net_array.size(); i++)
-    {
-        cout << "net " << i << " " << _net_array[i].getDegree() << " ";
-        for(int j = 0; j < _net_array[i].getDegree(); j++)
+        if (!t1 || !t2)
         {
-            cout << _net_array[i].getTermList()[j]->getName() << " ";
+            cerr << "Error: Unknown module " << name1 << " or " << name2 << endl;
+            continue;
         }
-        cout << endl;
+
+        // Create 'qty' nets (Standard HPWL approach)
+        for (int k = 0; k < qty; ++k)
+        {
+            Net net;
+            net.setDegree(2);
+            net.addTerm(t1);
+            net.addTerm(t2);
+            _net_array.push_back(net);
+        }
     }
-    cout << "===================================" << endl;
-}
 
-void Floorplanner::printAll()
-{
-    printBlocks();
-    printTerminals();
-    printNets();
+    // Initialize Tree with ONLY Soft Blocks
+    _tree = new Tree(_soft_modules);
 }
-
 
 void Floorplanner::floorplan()
 {
-
-    _tree->buildInitial(); 
+    _tree->buildInitial();
     simulatedAnnealing();
-
-    
 }
 
-double Floorplanner::computeArea() const {
-    size_t maxX = 0, maxY = 0;
-    for (Block blk : _block_array) {
+// 2. Cost Calculation
+double Floorplanner::computeArea()
+{
+    // Current bounding box area of soft modules
+    size_t minX = _chipWidth, maxX = 0;
+    size_t minY = _chipHeight, maxY = 0;
+
+    if (_soft_modules.empty())
+        return 0;
+
+    for (const auto &blk : _soft_modules)
+    {
+        minX = min(minX, blk.getX1());
         maxX = max(maxX, blk.getX2());
+        minY = min(minY, blk.getY1());
         maxY = max(maxY, blk.getY2());
     }
-    return static_cast<double>(maxX) * maxY;
+    return (double)(maxX - minX) * (maxY - minY);
 }
 
-
-double Floorplanner::computeWirelength()  {
+double Floorplanner::computeWirelength()
+{
     double total = 0.0;
-    for (Net& net : _net_array) {
+    for (Net &net : _net_array)
+    {
         total += net.calcHPWL();
     }
     return total;
 }
 
-
-// double Floorplanner::computeCost(double alpha, double beta,
-//                                  double areaNorm, double wireNorm, double aspectNorm) {
-//     double A = computeArea();         
-//     double W = computeWirelength();  
-
-//     size_t maxX = 0, maxY = 0;
-//     for (Block& blk : _block_array) {
-//         maxX = std::max(maxX, blk.getX2());
-//         maxY = std::max(maxY, blk.getY2());
-//     }
-
-//     if (maxX == 0 || maxY == 0 || areaNorm == 0 || wireNorm == 0 || aspectNorm == 0) return 1e9;
-
-//     double R = static_cast<double>(maxY) / maxX;
-//     double R_star = static_cast<double>(_outlineHeight) / _outlineWidth;
-//     double aspectPenalty = std::pow(R - R_star, 2.0);
-
-//     double normA = A / areaNorm;
-//     double normW = W / wireNorm;
-//     double normR = aspectPenalty / aspectNorm;
-
-//     double aspectWeight = beta;
-
-//     double cost = alpha * normA + (1-_alpha) * normW + beta * normR;
-//     return cost;
-// }
-
-// double Floorplanner::computeCost(double alpha, double beta,
-//     double areaNorm, double wireNorm, double aspectNorm) {
-// static int iteration = 0;
-
-// double A = computeArea();         
-// double W = computeWirelength();  
-
-// size_t maxX = 0, maxY = 0;
-// for (Block& blk : _block_array) {
-// maxX = std::max(maxX, blk.getX2());
-// maxY = std::max(maxY, blk.getY2());
-// }
-
-// if (maxX == 0 || maxY == 0 || areaNorm == 0 || wireNorm == 0 || aspectNorm == 0) return 1e9;
-
-// double R = static_cast<double>(maxY) / maxX;
-// double R_star = static_cast<double>(_outlineHeight) / _outlineWidth;
-// double aspectPenalty = std::pow(R - R_star, 2.0);
-
-// double normA = A / areaNorm;
-// double normW = W / wireNorm;
-// double normR = aspectPenalty / aspectNorm;
-
-// double cost = alpha * normA + (1-alpha) * normW + beta * normR;
-
-// // Log the metrics
-// logCostMetrics(iteration++, normA, normW, normR, cost);
-
-// return cost;
-// }
-double Floorplanner::computeCost(double alpha, double beta,
-    double areaNorm, double wireNorm, double aspectNorm,
-    double outlineXNorm, double outlineYNorm) {
-    static int iteration = 0;
-
-    double A = computeArea();         
-    double W = computeWirelength();  
-
-    size_t maxX = 0, maxY = 0;
-    for (Block& blk : _block_array) {
-        maxX = std::max(maxX, blk.getX2());
-        maxY = std::max(maxY, blk.getY2());
-    }
-
-    if (maxX == 0 || maxY == 0 || areaNorm == 0 || wireNorm == 0 || 
-        aspectNorm == 0 || outlineXNorm == 0 || outlineYNorm == 0) 
+double Floorplanner::computeFixedOverlapPenalty()
+{
+    double totalOverlap = 0;
+    for (const auto &soft : _soft_modules)
     {
-        cout << "maxX: " << maxX << ", maxY: " << maxY << endl;
-        cout << "areaNorm: " << areaNorm << ", wireNorm: " << wireNorm << endl;
-        cout << "aspectNorm: " << aspectNorm << ", outlineXNorm: " << outlineXNorm << endl;
-        cout << "outlineYNorm: " << outlineYNorm << endl;
-        return 1e9;
+        size_t sx1 = soft.getX1();
+        size_t sx2 = soft.getX2();
+        size_t sy1 = soft.getY1();
+        size_t sy2 = soft.getY2();
+
+        for (const auto &fixed : _fixed_modules)
+        {
+            size_t fx1 = fixed.getX1();
+            size_t fx2 = fixed.getX2();
+            size_t fy1 = fixed.getY1();
+            size_t fy2 = fixed.getY2();
+
+            size_t ix1 = max(sx1, fx1);
+            size_t ix2 = min(sx2, fx2);
+            size_t iy1 = max(sy1, fy1);
+            size_t iy2 = min(sy2, fy2);
+
+            if (ix1 < ix2 && iy1 < iy2)
+            {
+                totalOverlap += (double)(ix2 - ix1) * (iy2 - iy1);
+            }
+        }
     }
-        
-
-    // Calculate aspect ratio term
-    double R = static_cast<double>(maxY) / maxX;
-    double R_star = static_cast<double>(_outlineHeight) / _outlineWidth;
-    double aspectPenalty = std::pow(R - R_star, 2.0);
-
-    // Calculate outline constraint penalties
-    double outlineXPenalty = std::max(0.0, static_cast<double>(maxX) - _outlineWidth);
-    double outlineYPenalty = std::max(0.0, static_cast<double>(maxY) - _outlineHeight);
-    
-    // Normalize all terms
-    double normA = A / areaNorm;
-    double normW = W / wireNorm;
-    double normR = aspectPenalty / aspectNorm;
-    double normX = outlineXPenalty / outlineXNorm;
-    double normY = outlineYPenalty / outlineYNorm;
-    
-    // Add outline penalties to cost function
-    double outlineXPenaltyWeight = 6;
-    double outlineYPenaltyWeight = 6;
-    double cost = alpha * normA + (1-alpha) * normW + beta * normR + 
-                 outlineXPenaltyWeight * normX + outlineYPenaltyWeight * normY;
-
-    // Log the metrics
-    // logCostMetrics(iteration++, normA, normW, normR, normX, normY, cost);
-
-    return cost;
-}
-void Floorplanner::logCostMetrics(int iteration, double normA, double normW, 
-    double normR, double normX, double normY, double cost) {
-    static bool firstCall = true;
-    static std::ofstream logFile("cost_metrics.txt");
-    
-    if (firstCall) {
-        logFile << "Iteration,NormArea,NormWL,NormAspect,NormOutlineX,NormOutlineY,TotalCost\n";
-        firstCall = false;
-    }
-    
-    logFile << iteration << "," << normA << "," << normW << "," 
-            << normR << "," << normX << "," << normY << "," << cost << "\n";
+    return totalOverlap;
 }
 
+double Floorplanner::computeBoundaryPenalty()
+{
+    double totalViolation = 0;
+    for (const auto &soft : _soft_modules)
+    {
+        // Violations outside (0, 0) to (_chipWidth, _chipHeight)
+        double vX = 0, vY = 0;
+        if (soft.getX2() > _chipWidth)
+            vX = soft.getX2() - _chipWidth;
+        if (soft.getY2() > _chipHeight)
+            vY = soft.getY2() - _chipHeight;
 
-// void Floorplanner::computeNormalizationFactors(double& areaNorm, double& wlNorm, double& aspectNorm, int sampleSize ) {
-//     double totalArea = 0, totalWL = 0, totalAspect = 0;
-
-//     for (int i = 0; i < 100; ++i) {
-//         _tree->rotateRandom();
-//         _tree->deleteAndInsert();
-//         _tree->swapRandomNodes();
-//     }
-
-//     for (int i = 0; i < sampleSize; ++i) {
-//         _tree->rotateRandom();
-//         _tree->deleteAndInsert();
-//         _tree->swapRandomNodes();
-//         _tree->pack();
-
-//         totalArea += computeArea();
-//         totalWL += computeWirelength();
-
-//         size_t maxX = 0, maxY = 0;
-//         for (Block& blk : _block_array) {
-//             maxX = std::max(maxX, blk.getX2());
-//             maxY = std::max(maxY, blk.getY2());
-//         }
-//         double aspect = static_cast<double>(maxY) / maxX;
-//         totalAspect += std::pow(aspect - static_cast<double>(_outlineHeight) / _outlineWidth, 2);
-//     }
-
-//     areaNorm = totalArea / sampleSize;
-//     wlNorm = totalWL / sampleSize;
-//     aspectNorm = totalAspect / sampleSize;
-// }
-
-void Floorplanner::computeNormalizationFactors(double& areaNorm, double& wlNorm, 
-    double& aspectNorm, double& outlineXNorm, double& outlineYNorm, int sampleSize) {
-    
-    double totalArea = 0, totalWL = 0, totalAspect = 0;
-    double totalOutlineX = 0.001, totalOutlineY = 0.001;
-    double R_target = static_cast<double>(_outlineHeight) / _outlineWidth;
-
-    // Initial random perturbations
-    for (int i = 0; i < 100; ++i) {
-        _tree->rotateRandom();
-        _tree->deleteAndInsert();
-        _tree->swapRandomNodes();
+        // Simple linear penalty or area-based
+        if (vX > 0)
+            totalViolation += vX * soft.getHeight();
+        if (vY > 0)
+            totalViolation += vY * soft.getWidth();
     }
+    return totalViolation;
+}
 
-    // Sample solutions
-    for (int i = 0; i < sampleSize; ++i) {
+double Floorplanner::computeCost()
+{
+    double W = computeWirelength();
+    double Area = computeArea(); // Optional, but usually good to keep area tight
+    double Boundary = computeBoundaryPenalty();
+    double Overlap = computeFixedOverlapPenalty();
+
+    // Avoid division by zero
+    double nW = (_normWL > 0) ? _normWL : 1.0;
+    double nA = (_normArea > 0) ? _normArea : 1.0;
+    double nB = (_normBoundary > 0) ? _normBoundary : 1.0;
+    double nO = (_normOverlap > 0) ? _normOverlap : 1.0;
+
+    // Cost = alpha*Area + (1-alpha)*WL + Penalties
+    // Note: The contest only cares about WL, but during annealing we need Area to guide packing.
+    // _gamma and _delta should be very large.
+
+    return _alpha * (Area / nA) + (1.0 - _alpha) * (W / nW) + _gamma * (Boundary / nB) + _delta * (Overlap / nO);
+}
+
+void Floorplanner::computeNormalizationFactors(double &areaNorm, double &wlNorm,
+                                               double &boundaryNorm, double &overlapNorm, int sampleSize)
+{
+    double totalArea = 0, totalWL = 0, totalBound = 0, totalOverlap = 0;
+
+    for (int i = 0; i < sampleSize; ++i)
+    {
         _tree->rotateRandom();
         _tree->deleteAndInsert();
-        _tree->swapRandomNodes();
+        _tree->resizeRandom(); // Don't forget resize!
         _tree->pack();
 
         totalArea += computeArea();
         totalWL += computeWirelength();
-
-        size_t maxX = 0, maxY = 0;
-        for (Block& blk : _block_array) {
-            maxX = std::max(maxX, blk.getX2());
-            maxY = std::max(maxY, blk.getY2());
-        }
-
-        // Calculate aspect ratio penalty
-        double R = static_cast<double>(maxY) / maxX;
-        double aspectPenalty = std::pow(R - R_target, 2.0);
-        totalAspect += aspectPenalty;
-
-        // Calculate outline constraint penalties
-        double outlineXPenalty = std::max(0.0, static_cast<double>(maxX) - _outlineWidth);
-        // cout << "outlineXPenalty: " << outlineXPenalty << endl;
-        double outlineYPenalty = std::max(0.0, static_cast<double>(maxY) - _outlineHeight);
-        totalOutlineX += outlineXPenalty;
-        totalOutlineY += outlineYPenalty;
+        totalBound += computeBoundaryPenalty();
+        totalOverlap += computeFixedOverlapPenalty();
     }
 
-    // Compute average values as normalization factors
     areaNorm = totalArea / sampleSize;
     wlNorm = totalWL / sampleSize;
-    aspectNorm = totalAspect / sampleSize;
-    outlineXNorm = totalOutlineX / sampleSize;
-    outlineYNorm = totalOutlineY / sampleSize;
+    // Add small epsilon to avoid zero
+    boundaryNorm = (totalBound / sampleSize) + 1.0;
+    overlapNorm = (totalOverlap / sampleSize) + 1.0;
 }
 
-
-
-
-
-
-// void Floorplanner::simulatedAnnealing() {
-//     // Initialize temperature and cooling parameters
-//     double T = 1000.0;       // Initial temperature 
-//     const double T_min = 0.1;
-//     const double cooling_rate = 0.99;
-//     const int iterations = 1000; // Iterations per temperature
-
-
-//     _beta = 5;
-//     // Compute normalization factors
-//     double areaNorm, wireNorm, aspectNorm;
-//     computeNormalizationFactors(areaNorm, wireNorm, aspectNorm, 100);
-
-//     _alpha = 0.5; // Set alpha to a fixed value for simplicity
-//     cout << "alpha: " << _alpha << ", beta: " << _beta << endl;
-//     // Evaluate initial solution
-//     _tree->pack();
-//     double prevCost = computeCost(_alpha, _beta, areaNorm, wireNorm, aspectNorm);
-//     double bestCost = prevCost;
-
-//     Tree bestSolution = *_tree;  // store best solution by value
-
-//     while (T > T_min) {
-//         cout << "iterations: " << iterations << "Temperature: " << T << ", Cost: " << prevCost << endl;
-
-
-//         for (int i = 0; i < iterations; ++i) {
-//             Tree backup = *_tree;                       // Save current state
-//             double oldCost = prevCost;
-
-//             // Perform random perturbation
-//             // int op = rand() % 3;
-//             // switch (op) {
-//             //     case 0: _tree->rotateRandom(); break;
-//             //     case 1: _tree->swapRandomNodes(); break;
-//             //     case 2: _tree->deleteAndInsert(); break;
-//             // }
-//             double r = static_cast<double>(rand()) / RAND_MAX;  // Random number between 0 and 1
-
-//             // Specify probabilities for each operation
-//             // rotate: 40%, swap: 35%, delete-insert: 25%
-//             if (r < 0.250) {
-//                 _tree->rotateRandom();
-//             } else if (r < 0.75) {  // 0.40 + 0.35 = 0.75
-//                 _tree->swapRandomNodes();
-//             } else {  // remaining 25%
-//                 _tree->deleteAndInsert();
-//             }
-
-//             _tree->pack();                              // Repack after perturbation
-//             double newCost = computeCost(_alpha, _beta, areaNorm, wireNorm, aspectNorm);
-//             double deltaCost = newCost - oldCost;
-
-//             double probability = exp(-deltaCost / T);
-//             if (deltaCost < 0 || (double)rand() / RAND_MAX < probability) {
-//                 prevCost = newCost;                     // Accept new state
-//                 if (newCost < bestCost) {
-//                     bestCost = newCost;
-//                     bestSolution = *_tree;              // Update best solution
-//                 }
-//             } else {
-//                 *_tree = backup;                        // Revert state
-//             }
-//         }
-
-//         T *= cooling_rate;
-//         // _beta = initial_beta * (T / initial_T);  // adaptively reduce beta
-
-//     }
-
-//     // Restore best solution
-//     *_tree = bestSolution;
-//     _tree->pack();
-//     _tree->exportToFile("output.txt", _outlineWidth, _outlineHeight); // Export final solution
-
-//     cout << "==== Simulated Annealing Done ====" << endl;
-//     cout << "Best Cost: " << bestCost << endl;
-//     cout << "Final Area: " << computeArea() << endl;
-//     cout << "Final Wirelength: " << computeWirelength() << endl;
-// }
-
-
-
-
-
-// void Floorplanner::simulatedAnnealing() {
-//     // Initialize temperature and cooling parameters
-//     double T = 1000.0;       // Initial temperature 
-//     const double T_min = 0.1;
-//     const double cooling_rate = 0.99;
-//     const int iterations = 1000; // Iterations per temperature
-
-
-//     _beta = 5;
-//     // Compute normalization factors
-//     double areaNorm, wireNorm, aspectNorm;
-//     computeNormalizationFactors(areaNorm, wireNorm, aspectNorm, 100);
-
-//     _alpha = 0.5; // Set alpha to a fixed value for simplicity
-//     cout << "alpha: " << _alpha << ", beta: " << _beta << endl;
-//     // Evaluate initial solution
-//     _tree->pack();
-//     double prevCost = computeCost(_alpha, _beta, areaNorm, wireNorm, aspectNorm);
-//     double bestCost = prevCost;
-
-//     Tree bestSolution = *_tree;  // store best solution by value
-
-//     while (T > T_min) {
-//         cout << "iterations: " << iterations << "Temperature: " << T << ", Cost: " << prevCost << endl;
-
-
-//         for (int i = 0; i < iterations; ++i) {
-//             Tree backup = *_tree;                       
-//             double oldCost = prevCost;
-
-//             // Perform random perturbation
-//             // int op = rand() % 3;
-//             // switch (op) {
-//             //     case 0: _tree->rotateRandom(); break;
-//             //     case 1: _tree->swapRandomNodes(); break;
-//             //     case 2: _tree->deleteAndInsert(); break;
-//             // }
-//             double r = static_cast<double>(rand()) / RAND_MAX;  
-
-//             if (r < 0.250) {
-//                 _tree->rotateRandom();
-//             } else if (r < 0.75) {  
-//                 _tree->swapRandomNodes();
-//             } else {  
-//                 _tree->deleteAndInsert();
-//             }
-
-//             _tree->pack();                              // Repack after perturbation
-//             double newCost = computeCost(_alpha, _beta, areaNorm, wireNorm, aspectNorm);
-//             double deltaCost = newCost - oldCost;
-
-//             double probability = exp(-deltaCost / T);
-//             if (deltaCost < 0 || (double)rand() / RAND_MAX < probability) 
-//             // accept the solution
-//             {
-//                 prevCost = newCost;                     // Accept new state
-//                 if (newCost < bestCost) {
-//                     bestCost = newCost;
-//                     bestSolution = *_tree;              // Update best solution
-//                 }
-//             } else 
-//             // reject the solution
-//             {
-//                 *_tree = backup;                        // Revert state
-//             }
-//         }
-
-//         T *= cooling_rate;
-
-//     }
-
-//     // Restore best solution
-//     *_tree = bestSolution;
-//     _tree->pack();
-//     _tree->exportToFile("output.txt", _outlineWidth, _outlineHeight); // Export final solution
-
-//     cout << "==== Simulated Annealing Done ====" << endl;
-//     cout << "Best Cost: " << bestCost << endl;
-//     cout << "Final Area: " << computeArea() << endl;
-//     cout << "Final Wirelength: " << computeWirelength() << endl;
-// }]
-
-
-
-
-void Floorplanner::simulatedAnnealing() {
-    // Initialize parameters
-    double T = 100000.0;
+// 3. Simulated Annealing
+void Floorplanner::simulatedAnnealing()
+{
+    double T = 10000.0;
     const double T_min = 0.1;
-    const double cooling_rate = 0.99;
-    const int iterations = 180;
+    const double cooling_rate = 0.98;
+    const int iterations = 500; // Increase for better quality
 
-    // Adaptive beta parameters
-    _beta = 4.0;  // Start with high beta to enforce aspect ratio
-    const double beta_min = 0.5;  // Minimum beta value
-    const double aspect_threshold = 0.0001;  // Threshold for good aspect ratio
-    const double beta_decay = 0.99;  // Beta reduction rate
+    // Normalization
+    computeNormalizationFactors(_normArea, _normWL, _normBoundary, _normOverlap, 50);
 
-    // Compute normalization factors
-    double areaNorm, wireNorm, aspectNorm, outlineXNorm, outlineYNorm;
-    computeNormalizationFactors(areaNorm, wireNorm, aspectNorm, outlineXNorm, outlineYNorm, 100);
-
-    // _alpha = 0.9;
     _tree->pack();
-    double prevCost = computeCost(_alpha, _beta, areaNorm, wireNorm, aspectNorm, outlineXNorm, outlineYNorm);
+    double prevCost = computeCost();
     double bestCost = prevCost;
-    Tree bestSolution = *_tree;
 
-    while (T > T_min) {
-        // cout << "Temperature: " << T << ", Beta: " << _beta << ", Cost: " << prevCost << endl;
+    // We must save the "best state". Since Tree holds pointers to _soft_modules,
+    // we need to save the Tree structure AND the Block dimensions (because resize changes them).
+    Tree bestTree = *_tree;
+    vector<Block> bestBlocks = _soft_modules; // Save block states (dims)
 
-        for (int i = 0; i < iterations; ++i) {
-            Tree backup = *_tree;
+    while (T > T_min)
+    {
+        for (int i = 0; i < iterations; ++i)
+        {
+            Tree backupTree = *_tree;
+            vector<Block> backupBlocks = _soft_modules; // Expensive copy, optimize later if needed
+
             double oldCost = prevCost;
 
-            // Perform perturbation
-            double r = static_cast<double>(rand()) / RAND_MAX;
-            if (r < 0.15) {
+            // Perturb
+            double r = (double)rand() / RAND_MAX;
+            if (r < 0.2)
+                _tree->resizeRandom();
+            else if (r < 0.5)
                 _tree->rotateRandom();
-            } else if (r < 0.65) {
+            else if (r < 0.75)
                 _tree->swapRandomNodes();
-            } else {
+            else
                 _tree->deleteAndInsert();
-            }
-
 
             _tree->pack();
-            
-            // Calculate individual cost terms
-            double A = computeArea();
-            double W = computeWirelength();
-            size_t maxX = 0, maxY = 0;
-            for (Block& blk : _block_array) {
-                maxX = std::max(maxX, blk.getX2());
-                maxY = std::max(maxY, blk.getY2());
-            }
-            double R = static_cast<double>(maxY) / maxX;
-            double R_star = static_cast<double>(_outlineHeight) / _outlineWidth;
-            double aspectPenalty = std::pow(R - R_star, 2.0);
-            double normR = aspectPenalty / aspectNorm;
+            double newCost = computeCost();
+            double delta = newCost - oldCost;
 
-            // Adapt beta if aspect ratio is good enough
-            if (normR < aspect_threshold && _beta > beta_min) {
-                _beta *= beta_decay;
-                _beta = std::max(_beta, beta_min);
-            }
+            bool accept = (delta < 0) || ((double)rand() / RAND_MAX < exp(-delta / T));
 
-            double newCost = computeCost(_alpha, _beta, areaNorm, wireNorm, aspectNorm, outlineXNorm, outlineYNorm);
-            double deltaCost = newCost - oldCost;
-
-            double probability = exp(-deltaCost / T)/1000;
-            if (deltaCost < 0 || (double)rand() / RAND_MAX < probability) {
+            if (accept)
+            {
                 prevCost = newCost;
-                if (newCost < bestCost) {
+                if (newCost < bestCost)
+                {
                     bestCost = newCost;
-                    bestSolution = *_tree;
+                    bestTree = *_tree;
+                    bestBlocks = _soft_modules;
                 }
-            } else {
-                *_tree = backup;
-                prevCost = oldCost;
+            }
+            else
+            {
+                *_tree = backupTree;
+                _soft_modules = backupBlocks; // Restore dimensions
             }
         }
-
         T *= cooling_rate;
     }
 
-    // Restore best solution
-    *_tree = bestSolution;
+    // Restore Best
+    *_tree = bestTree;
+    _soft_modules = bestBlocks;
     _tree->pack();
-    // _tree->exportToFile("output.txt", _outlineWidth, _outlineHeight);
-    outputArea = computeArea();
-    outputWirelength = computeWirelength();
-    outputCost = _alpha * outputArea + (1 - _alpha) * outputWirelength;
+    outputWirelength = (size_t)computeWirelength();
+}
 
-    cout << "==== Simulated Annealing Done ====" << endl;
-    cout << "Best Cost: " << bestCost << endl;
-    cout << "output cost: " << outputCost << endl;
-    cout << "Final Area: " << outputArea << endl;
-    cout << "Final Wirelength: " << outputWirelength << endl;
+// 4. Output Logic (ICCAD Format)
+void Floorplanner::outputResults(fstream &outputFile, double runtime)
+{
+    // ICCAD Format:
+    // HPWL <value>
+    // SOFTMODULE <num>
+    // <name> <num_corners>
+    // <x> <y> ... (corners)
+
+    // We strictly output rectangles (4 corners) for soft modules
+
+    outputFile << "HPWL " << fixed << setprecision(1) << (double)outputWirelength << endl;
+
+    outputFile << "SOFTMODULE " << _soft_modules.size() << endl;
+    for (const auto &b : _soft_modules)
+    {
+        outputFile << b.getName() << " 4" << endl;
+        // Output 4 corners clockwise starting from bottom-left?
+        // Contest usually accepts: (x1,y1) (x1,y2) (x2,y2) (x2,y1)
+        // Check strict contest rules. Assuming standard rectangle output:
+        outputFile << b.getX1() << " " << b.getY1() << endl;
+        outputFile << b.getX1() << " " << b.getY2() << endl;
+        outputFile << b.getX2() << " " << b.getY2() << endl;
+        outputFile << b.getX2() << " " << b.getY1() << endl;
+    }
 }
