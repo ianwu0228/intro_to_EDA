@@ -45,6 +45,27 @@ using namespace std;
 
 // tree.cpp
 
+// void Tree::resizeRandom()
+// {
+//     if (_blocks.empty())
+//         return;
+
+//     // Pick a random block
+//     int randIdx = rand() % _blocks.size();
+
+//     // We must ensure we don't try to resize a Fixed block (though _blocks should only contain soft ones now)
+//     // But double check just in case:
+//     if (_blocks[randIdx].isFixed())
+//         return;
+
+//     // Generate random Aspect Ratio between 0.5 and 2.0
+//     // (rand / RAND_MAX) gives 0.0 to 1.0
+//     // formula: 0.5 + (0..1.5)
+//     double ar = 0.5 + (static_cast<double>(rand()) / RAND_MAX) * 1.5;
+
+//     _blocks[randIdx].resize(ar);
+// }
+
 void Tree::resizeRandom()
 {
     if (_blocks.empty())
@@ -53,15 +74,22 @@ void Tree::resizeRandom()
     // Pick a random block
     int randIdx = rand() % _blocks.size();
 
-    // We must ensure we don't try to resize a Fixed block (though _blocks should only contain soft ones now)
-    // But double check just in case:
+    // Check if fixed
     if (_blocks[randIdx].isFixed())
         return;
 
-    // Generate random Aspect Ratio between 0.5 and 2.0
-    // (rand / RAND_MAX) gives 0.0 to 1.0
-    // formula: 0.5 + (0..1.5)
-    double ar = 0.5 + (static_cast<double>(rand()) / RAND_MAX) * 1.5;
+    double ar;
+    // NEW: Different Aspect Ratio range for Ghosts
+    if (_blocks[randIdx].isGhost())
+    {
+        // Allow ghosts to range from 0.1 to 10.0 (very thin/wide)
+        ar = 0.1 + (static_cast<double>(rand()) / RAND_MAX) * 9.9;
+    }
+    else
+    {
+        // Standard range for modules (0.5 to 2.0)
+        ar = 0.5 + (static_cast<double>(rand()) / RAND_MAX) * 1.5;
+    }
 
     _blocks[randIdx].resize(ar);
 }

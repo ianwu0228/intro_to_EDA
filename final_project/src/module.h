@@ -48,21 +48,88 @@ protected:
     size_t _id;
 };
 
+// class Block : public Terminal
+// {
+// public:
+//     // Constructor for SOFT modules (Area is known, Dimensions flexible)
+//     Block(string &name, size_t minArea) : Terminal(name, 0, 0), _minArea(minArea), _isFixed(false)
+//     {
+//         // Default to square shape initially
+//         _w = static_cast<size_t>(sqrt(minArea));
+//         _h = _w;
+//         if (_w * _h < _minArea)
+//             _h++; // Ensure area constraint
+//     }
+
+//     // Constructor for FIXED modules (Dimensions and Position known)
+//     Block(string &name, size_t w, size_t h, size_t x, size_t y) : Terminal(name, x, y), _w(w), _h(h), _minArea(w * h), _isFixed(true)
+//     {
+//         _x2 = _x1 + _w;
+//         _y2 = _y1 + _h;
+//     }
+
+//     ~Block() {}
+
+//     // basic access methods
+//     size_t getWidth(bool rotate = false) const { return rotate ? _h : _w; }
+//     size_t getHeight(bool rotate = false) const { return rotate ? _w : _h; }
+//     size_t getArea() const { return _h * _w; }
+//     size_t getMinArea() const { return _minArea; }
+//     bool isFixed() const { return _isFixed; }
+
+//     // set functions
+//     void setWidth(size_t w) { _w = w; }
+//     void setHeight(size_t h) { _h = h; }
+//     void setID(size_t id) { _id = id; }
+
+//     // Resize function for Soft Modules (Aspect Ratio = H / W)
+//     void resize(double aspectRatio)
+//     {
+//         if (_isFixed)
+//             return;
+
+//         // Calculate W based on Area and AR: W = sqrt(Area / AR)
+//         _w = static_cast<size_t>(std::sqrt(_minArea / aspectRatio));
+//         // Calculate H based on W
+//         if (_w == 0)
+//             _w = 1; // Prevent div by zero
+//         _h = static_cast<size_t>(std::ceil((double)_minArea / _w));
+
+//         // Double check area constraint (integer math can be tricky)
+//         if (_w * _h < _minArea)
+//             _h++;
+//     }
+
+//     // other member functions
+//     void setNode(Node *node) { _node = node; }
+//     Node *getNode() { return _node; }
+
+// private:
+//     size_t _w;       // width of the block
+//     size_t _h;       // height of the block
+//     size_t _minArea; // NEW: Required minimum area
+//     bool _isFixed;   // NEW: Flag for fixed modules
+//     size_t _id;      // id of the block
+//     Node *_node;     // pointer to the parent node
+// };
+
 class Block : public Terminal
 {
 public:
     // Constructor for SOFT modules (Area is known, Dimensions flexible)
-    Block(string &name, size_t minArea) : Terminal(name, 0, 0), _minArea(minArea), _isFixed(false)
+    // ADDED: isGhost parameter (defaults to false)
+    Block(string &name, size_t minArea, bool isGhost = false)
+        : Terminal(name, 0, 0), _minArea(minArea), _isFixed(false), _isGhost(isGhost)
     {
-        // Default to square shape initially
         _w = static_cast<size_t>(sqrt(minArea));
         _h = _w;
         if (_w * _h < _minArea)
-            _h++; // Ensure area constraint
+            _h++;
     }
 
     // Constructor for FIXED modules (Dimensions and Position known)
-    Block(string &name, size_t w, size_t h, size_t x, size_t y) : Terminal(name, x, y), _w(w), _h(h), _minArea(w * h), _isFixed(true)
+    Block(string &name, size_t w, size_t h, size_t x, size_t y)
+        : Terminal(name, x, y), _w(w), _h(h), _minArea(w * h), _isFixed(true), _isGhost(false)
     {
         _x2 = _x1 + _w;
         _y2 = _y1 + _h;
@@ -77,6 +144,9 @@ public:
     size_t getMinArea() const { return _minArea; }
     bool isFixed() const { return _isFixed; }
 
+    // NEW: Ghost getter
+    bool isGhost() const { return _isGhost; }
+
     // set functions
     void setWidth(size_t w) { _w = w; }
     void setHeight(size_t h) { _h = h; }
@@ -88,29 +158,30 @@ public:
         if (_isFixed)
             return;
 
-        // Calculate W based on Area and AR: W = sqrt(Area / AR)
+        // Safety check for ghosts with very small area
+        if (_minArea == 0)
+            return;
+
         _w = static_cast<size_t>(std::sqrt(_minArea / aspectRatio));
-        // Calculate H based on W
         if (_w == 0)
-            _w = 1; // Prevent div by zero
+            _w = 1;
         _h = static_cast<size_t>(std::ceil((double)_minArea / _w));
 
-        // Double check area constraint (integer math can be tricky)
         if (_w * _h < _minArea)
             _h++;
     }
 
-    // other member functions
     void setNode(Node *node) { _node = node; }
     Node *getNode() { return _node; }
 
 private:
-    size_t _w;       // width of the block
-    size_t _h;       // height of the block
-    size_t _minArea; // NEW: Required minimum area
-    bool _isFixed;   // NEW: Flag for fixed modules
-    size_t _id;      // id of the block
-    Node *_node;     // pointer to the parent node
+    size_t _w;
+    size_t _h;
+    size_t _minArea;
+    bool _isFixed;
+    bool _isGhost; // NEW: Ghost flag
+    size_t _id;
+    Node *_node;
 };
 
 class Net

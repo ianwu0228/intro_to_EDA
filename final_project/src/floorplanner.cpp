@@ -40,6 +40,35 @@ void Floorplanner::parseInput(fstream &inputFile)
         _soft_modules.push_back(b);
     }
 
+    // ==========================================
+    // NEW: INJECT GHOST BLOCKS
+    // ==========================================
+    // Configuration: 15% of soft modules, sized at 50% average area
+    if (numSoft > 0)
+    {
+        int numGhosts = static_cast<int>(numSoft * 0.15);
+
+        // Calculate average area
+        double totalArea = 0;
+        for (const auto &b : _soft_modules)
+            totalArea += b.getMinArea();
+        size_t avgArea = totalArea / numSoft;
+        size_t ghostArea = avgArea / 2;
+        if (ghostArea < 1)
+            ghostArea = 1; // Safety
+
+        for (int i = 0; i < numGhosts; ++i)
+        {
+            string name = "GHOST_" + to_string(i);
+            // Create ghost block: area, isGhost=true
+            Block b(name, ghostArea, true);
+            // Assign ID (append to end of list)
+            b.setID(numSoft + i);
+            _soft_modules.push_back(b);
+        }
+    }
+    // ==========================================
+
     int numFixed;
     if (!(inputFile >> keyword) || keyword != "FIXEDMODULE")
     {
@@ -375,40 +404,83 @@ void Floorplanner::simulatedAnnealing()
 //         outputFile << b.getX2() << " " << b.getY1() << endl;
 //     }
 // }
+
+// void Floorplanner::outputResults(fstream &outputFile, double runtime)
+// {
+//     // 1. Ensure the tree is packed one last time to get clean relative coordinates
+//     _tree->pack();
+
+//     // 2. Output Header
+//     // "HPWL <value>" (Precision to 1 decimal place)
+//     // Note: We re-calculate HPWL here to ensure it includes the final offsets
+//     double finalHPWL = computeWirelength();
+//     outputFile << "HPWL " << fixed << setprecision(1) << finalHPWL << endl;
+
+//     // 3. Output Soft Modules
+//     // "SOFTMODULE <number>"
+//     outputFile << "SOFTMODULE " << _soft_modules.size() << endl;
+
+//     for (const auto &b : _soft_modules)
+//     {
+//         // Format: <Name> <NumCorners>
+//         outputFile << b.getName() << " 4" << endl;
+
+//         // Apply the global Cluster Offset to get absolute coordinates
+//         size_t x1 = b.getX1() + _offsetX;
+//         size_t y1 = b.getY1() + _offsetY;
+//         size_t x2 = b.getX2() + _offsetX;
+//         size_t y2 = b.getY2() + _offsetY;
+
+//         //[cite_start] // Output 4 corners in CLOCKWISE order (starting Bottom-Left) [cite: 250]
+//         // 1. Bottom-Left
+//         outputFile << x1 << " " << y1 << endl;
+//         // 2. Top-Left
+//         outputFile << x1 << " " << y2 << endl;
+//         // 3. Top-Right
+//         outputFile << x2 << " " << y2 << endl;
+//         // 4. Bottom-Right
+//         outputFile << x2 << " " << y1 << endl;
+//     }
+// }
+
 void Floorplanner::outputResults(fstream &outputFile, double runtime)
 {
-    // 1. Ensure the tree is packed one last time to get clean relative coordinates
+    // 1. Ensure the tree is packed one last time
     _tree->pack();
 
     // 2. Output Header
-    // "HPWL <value>" (Precision to 1 decimal place)
-    // Note: We re-calculate HPWL here to ensure it includes the final offsets
     double finalHPWL = computeWirelength();
     outputFile << "HPWL " << fixed << setprecision(1) << finalHPWL << endl;
 
-    // 3. Output Soft Modules
-    // "SOFTMODULE <number>"
-    outputFile << "SOFTMODULE " << _soft_modules.size() << endl;
+    // NEW: Calculate REAL module count (exclude ghosts)
+    size_t realCount = 0;
+    for (const auto &b : _soft_modules)
+    {
+        if (!b.isGhost())
+            realCount++;
+    }
+
+    outputFile << "SOFTMODULE " << realCount << endl;
 
     for (const auto &b : _soft_modules)
     {
+        // NEW: Skip ghost blocks
+        if (b.isGhost())
+            continue;
+
         // Format: <Name> <NumCorners>
         outputFile << b.getName() << " 4" << endl;
 
-        // Apply the global Cluster Offset to get absolute coordinates
+        // Apply global Cluster Offset
         size_t x1 = b.getX1() + _offsetX;
         size_t y1 = b.getY1() + _offsetY;
         size_t x2 = b.getX2() + _offsetX;
         size_t y2 = b.getY2() + _offsetY;
 
-        //[cite_start] // Output 4 corners in CLOCKWISE order (starting Bottom-Left) [cite: 250]
-        // 1. Bottom-Left
+        // Output 4 corners in CLOCKWISE order (starting Bottom-Left)
         outputFile << x1 << " " << y1 << endl;
-        // 2. Top-Left
         outputFile << x1 << " " << y2 << endl;
-        // 3. Top-Right
         outputFile << x2 << " " << y2 << endl;
-        // 4. Bottom-Right
         outputFile << x2 << " " << y1 << endl;
     }
 }
