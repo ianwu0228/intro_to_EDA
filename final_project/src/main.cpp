@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     // ICCAD Contest format often uses: ./binary input output
     else if (argc == 3)
     {
-        cout << "ICCAD Format Detected." << endl;
+        // cout << "ICCAD Format Detected." << endl;
         input_file.open(argv[1], ios::in);
         output.open(argv[2], ios::out);
         alpha = 0; // Default if not provided

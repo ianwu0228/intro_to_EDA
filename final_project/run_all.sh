@@ -4,7 +4,7 @@
 mkdir -p output
 
 # Loop through cases 1 to 6
-for i in {3..3}
+for i in {1..6}
 do
     # Format the number with leading zero (e.g., 01, 02)
     CASE_NUM=$(printf "%02d" $i)
