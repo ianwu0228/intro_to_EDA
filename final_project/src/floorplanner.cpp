@@ -133,13 +133,41 @@ double Floorplanner::computeArea()
     return (double)(maxX - minX) * (maxY - minY);
 }
 
+// double Floorplanner::computeWirelength()
+// {
+//     double total = 0.0;
+//     for (Net &net : _net_array)
+//     {
+//         total += net.calcHPWL();
+//     }
+//     return total;
+// }
+
 double Floorplanner::computeWirelength()
 {
     double total = 0.0;
+
+    // Temporarily apply offsets to blocks for calculation
+    for (auto &soft : _soft_modules)
+    {
+        soft.setPos(soft.getX1() + _offsetX, soft.getY1() + _offsetY,
+                    soft.getX2() + _offsetX, soft.getY2() + _offsetY);
+    }
+
+    // Calculate HPWL with absolute coordinates
     for (Net &net : _net_array)
     {
         total += net.calcHPWL();
     }
+
+    // Revert offsets (restore relative coordinates for B*-tree packing)
+    // Note: B*-tree pack() will overwrite these anyway, but it's good practice.
+    for (auto &soft : _soft_modules)
+    {
+        soft.setPos(soft.getX1() - _offsetX, soft.getY1() - _offsetY,
+                    soft.getX2() - _offsetX, soft.getY2() - _offsetY);
+    }
+
     return total;
 }
 
@@ -148,13 +176,15 @@ double Floorplanner::computeFixedOverlapPenalty()
     double totalOverlap = 0;
     for (const auto &soft : _soft_modules)
     {
-        size_t sx1 = soft.getX1();
-        size_t sx2 = soft.getX2();
-        size_t sy1 = soft.getY1();
-        size_t sy2 = soft.getY2();
+        // APPLY OFFSET HERE
+        size_t sx1 = soft.getX1() + _offsetX;
+        size_t sx2 = soft.getX2() + _offsetX;
+        size_t sy1 = soft.getY1() + _offsetY;
+        size_t sy2 = soft.getY2() + _offsetY;
 
         for (const auto &fixed : _fixed_modules)
         {
+            // Fixed blocks are absolute, NO offset
             size_t fx1 = fixed.getX1();
             size_t fx2 = fixed.getX2();
             size_t fy1 = fixed.getY1();
@@ -179,18 +209,16 @@ double Floorplanner::computeBoundaryPenalty()
     double totalViolation = 0;
     for (const auto &soft : _soft_modules)
     {
-        // Violations outside (0, 0) to (_chipWidth, _chipHeight)
-        double vX = 0, vY = 0;
-        if (soft.getX2() > _chipWidth)
-            vX = soft.getX2() - _chipWidth;
-        if (soft.getY2() > _chipHeight)
-            vY = soft.getY2() - _chipHeight;
+        // APPLY OFFSET HERE
+        size_t sx2 = soft.getX2() + _offsetX;
+        size_t sy2 = soft.getY2() + _offsetY;
 
-        // Simple linear penalty or area-based
-        if (vX > 0)
-            totalViolation += vX * soft.getHeight();
-        if (vY > 0)
-            totalViolation += vY * soft.getWidth();
+        // Check violations
+        if (sx2 > _chipWidth)
+            totalViolation += (sx2 - _chipWidth) * soft.getHeight();
+        if (sy2 > _chipHeight)
+            totalViolation += (sy2 - _chipHeight) * soft.getWidth();
+        // Also check if offset pushed it negative (though we clamped it to 0 above)
     }
     return totalViolation;
 }
@@ -271,14 +299,21 @@ void Floorplanner::simulatedAnnealing()
 
             // Perturb
             double r = (double)rand() / RAND_MAX;
-            if (r < 0.2)
+
+            // Backup offsets
+            int backupX = _offsetX;
+            int backupY = _offsetY;
+
+            if (r < 0.1)
                 _tree->resizeRandom();
-            else if (r < 0.5)
+            else if (r < 0.3)
                 _tree->rotateRandom();
-            else if (r < 0.75)
+            else if (r < 0.5)
                 _tree->swapRandomNodes();
-            else
+            else if (r < 0.7)
                 _tree->deleteAndInsert();
+            else
+                moveCluster();
 
             _tree->pack();
             double newCost = computeCost();
@@ -298,6 +333,8 @@ void Floorplanner::simulatedAnnealing()
             }
             else
             {
+                _offsetX = backupX; // Restore offset if rejected
+                _offsetY = backupY;
                 *_tree = backupTree;
                 _soft_modules = backupBlocks; // Restore dimensions
             }
@@ -312,29 +349,92 @@ void Floorplanner::simulatedAnnealing()
     outputWirelength = (size_t)computeWirelength();
 }
 
-// 4. Output Logic (ICCAD Format)
+// // 4. Output Logic (ICCAD Format)
+// void Floorplanner::outputResults(fstream &outputFile, double runtime)
+// {
+//     // ICCAD Format:
+//     // HPWL <value>
+//     // SOFTMODULE <num>
+//     // <name> <num_corners>
+//     // <x> <y> ... (corners)
+
+//     // We strictly output rectangles (4 corners) for soft modules
+
+//     outputFile << "HPWL " << fixed << setprecision(1) << (double)outputWirelength << endl;
+
+//     outputFile << "SOFTMODULE " << _soft_modules.size() << endl;
+//     for (const auto &b : _soft_modules)
+//     {
+//         outputFile << b.getName() << " 4" << endl;
+//         // Output 4 corners clockwise starting from bottom-left?
+//         // Contest usually accepts: (x1,y1) (x1,y2) (x2,y2) (x2,y1)
+//         // Check strict contest rules. Assuming standard rectangle output:
+//         outputFile << b.getX1() << " " << b.getY1() << endl;
+//         outputFile << b.getX1() << " " << b.getY2() << endl;
+//         outputFile << b.getX2() << " " << b.getY2() << endl;
+//         outputFile << b.getX2() << " " << b.getY1() << endl;
+//     }
+// }
 void Floorplanner::outputResults(fstream &outputFile, double runtime)
 {
-    // ICCAD Format:
-    // HPWL <value>
-    // SOFTMODULE <num>
-    // <name> <num_corners>
-    // <x> <y> ... (corners)
+    // 1. Ensure the tree is packed one last time to get clean relative coordinates
+    _tree->pack();
 
-    // We strictly output rectangles (4 corners) for soft modules
+    // 2. Output Header
+    // "HPWL <value>" (Precision to 1 decimal place)
+    // Note: We re-calculate HPWL here to ensure it includes the final offsets
+    double finalHPWL = computeWirelength();
+    outputFile << "HPWL " << fixed << setprecision(1) << finalHPWL << endl;
 
-    outputFile << "HPWL " << fixed << setprecision(1) << (double)outputWirelength << endl;
-
+    // 3. Output Soft Modules
+    // "SOFTMODULE <number>"
     outputFile << "SOFTMODULE " << _soft_modules.size() << endl;
+
     for (const auto &b : _soft_modules)
     {
+        // Format: <Name> <NumCorners>
         outputFile << b.getName() << " 4" << endl;
-        // Output 4 corners clockwise starting from bottom-left?
-        // Contest usually accepts: (x1,y1) (x1,y2) (x2,y2) (x2,y1)
-        // Check strict contest rules. Assuming standard rectangle output:
-        outputFile << b.getX1() << " " << b.getY1() << endl;
-        outputFile << b.getX1() << " " << b.getY2() << endl;
-        outputFile << b.getX2() << " " << b.getY2() << endl;
-        outputFile << b.getX2() << " " << b.getY1() << endl;
+
+        // Apply the global Cluster Offset to get absolute coordinates
+        size_t x1 = b.getX1() + _offsetX;
+        size_t y1 = b.getY1() + _offsetY;
+        size_t x2 = b.getX2() + _offsetX;
+        size_t y2 = b.getY2() + _offsetY;
+
+        //[cite_start] // Output 4 corners in CLOCKWISE order (starting Bottom-Left) [cite: 250]
+        // 1. Bottom-Left
+        outputFile << x1 << " " << y1 << endl;
+        // 2. Top-Left
+        outputFile << x1 << " " << y2 << endl;
+        // 3. Top-Right
+        outputFile << x2 << " " << y2 << endl;
+        // 4. Bottom-Right
+        outputFile << x2 << " " << y1 << endl;
     }
+}
+
+// Add this new function
+void Floorplanner::moveCluster()
+{
+    // Move the cluster randomly within the chip range
+    // We can shift by large amounts or small deltas.
+    // For simplicity, let's pick a random valid coordinate occasionally,
+    // or drift it slightly.
+
+    // Random drift: -100 to +100 units
+    int driftX = (rand() % 200) - 100;
+    int driftY = (rand() % 200) - 100;
+
+    _offsetX += driftX;
+    _offsetY += driftY;
+
+    // Keep it somewhat sane (optional, but helps convergence)
+    if (_offsetX < 0)
+        _offsetX = 0;
+    if (_offsetY < 0)
+        _offsetY = 0;
+    if (_offsetX > (int)_chipWidth)
+        _offsetX = _chipWidth;
+    if (_offsetY > (int)_chipHeight)
+        _offsetY = _chipHeight;
 }

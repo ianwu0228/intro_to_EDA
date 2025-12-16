@@ -34,6 +34,10 @@ public:
     size_t _chipWidth;  // Fixed Outline Width (from CHIP)
     size_t _chipHeight; // Fixed Outline Height (from CHIP)
 
+    // for the whole softblocks offset
+    int _offsetX = 0;
+    int _offsetY = 0;
+
     // Separate vectors for Soft and Fixed modules
     vector<Block> _soft_modules;
     vector<Block> _fixed_modules;
@@ -65,6 +69,8 @@ public:
     // Penalties
     double computeFixedOverlapPenalty();
     double computeBoundaryPenalty();
+
+    void moveCluster();
 
 private:
     size_t outputWirelength;
