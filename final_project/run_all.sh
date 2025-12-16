@@ -4,7 +4,7 @@
 mkdir -p output
 
 # Loop through cases 1 to 6
-for i in {1..6}
+for i in {3..3}
 do
     # Format the number with leading zero (e.g., 01, 02)
     CASE_NUM=$(printf "%02d" $i)
@@ -28,7 +28,13 @@ do
         
         # Run the visualizer
         # Usage: python3 visualize.py <input_file> <output_file> -o <image_file>
+
+        # plot result with net connections
         python3 visualize.py "$INPUT_FILE" "$OUTPUT_FILE" -o "$IMAGE_FILE"
+
+        # plot result without net connections
+        # python3 visualize.py "$INPUT_FILE" "$OUTPUT_FILE" -o "$IMAGE_FILE" --no-conn 
+
         
         if [ $? -eq 0 ]; then
             echo "Visualization saved to $IMAGE_FILE"
