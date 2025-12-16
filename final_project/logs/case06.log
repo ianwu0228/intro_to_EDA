@@ -1,0 +1,13 @@
+----------------------------------------------------------------
+Running Case 06
+Input: input/case06-input.txt
+Output: output/case06.out
+Time taken: 92.015 s
+Floorplanning successful. Generating visualization...
+Chip Size: 3000 x 2700
+Fixed Modules: 13
+Soft Modules: 21
+Connections: 56
+Plot saved to output/case06.png
+Visualization saved to output/case06.png
+----------------------------------------------------------------
