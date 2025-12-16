@@ -2,7 +2,7 @@
 Running Case 06
 Input: input/case06-input.txt
 Output: output/case06.out
-Time taken: 92.015 s
+Time taken: 94.182 s
 Floorplanning successful. Generating visualization...
 Chip Size: 3000 x 2700
 Fixed Modules: 13
