@@ -43,6 +43,35 @@ void Floorplanner::parseInput(fstream &inputFile)
         _soft_modules.push_back(b);
     }
 
+    // ==========================================
+    // NEW: INJECT GHOST BLOCKS
+    // ==========================================
+    // Configuration: 15% of soft modules, sized at 50% average area
+    if (numSoft > 0)
+    {
+        int numGhosts = static_cast<int>(numSoft * 0.15);
+
+        // Calculate average area
+        double totalArea = 0;
+        for (const auto &b : _soft_modules)
+            totalArea += b.getMinArea();
+        size_t avgArea = totalArea / numSoft;
+        size_t ghostArea = avgArea / 2;
+        if (ghostArea < 1)
+            ghostArea = 1; // Safety
+
+        for (int i = 0; i < numGhosts; ++i)
+        {
+            string name = "GHOST_" + to_string(i);
+            // Create ghost block: area, isGhost=true
+            Block b(name, ghostArea, true);
+            // Assign ID (append to end of list)
+            b.setID(numSoft + i);
+            _soft_modules.push_back(b);
+        }
+    }
+    // ==========================================
+
     int numFixed;
     if (!(inputFile >> keyword) || keyword != "FIXEDMODULE")
     {
@@ -378,40 +407,83 @@ void Floorplanner::simulatedAnnealing()
 //         outputFile << b.getX2() << " " << b.getY1() << endl;
 //     }
 // }
+
+// void Floorplanner::outputResults(fstream &outputFile, double runtime)
+// {
+//     // 1. Ensure the tree is packed one last time to get clean relative coordinates
+//     _tree->pack();
+
+//     // 2. Output Header
+//     // "HPWL <value>" (Precision to 1 decimal place)
+//     // Note: We re-calculate HPWL here to ensure it includes the final offsets
+//     double finalHPWL = computeWirelength();
+//     outputFile << "HPWL " << fixed << setprecision(1) << finalHPWL << endl;
+
+//     // 3. Output Soft Modules
+//     // "SOFTMODULE <number>"
+//     outputFile << "SOFTMODULE " << _soft_modules.size() << endl;
+
+//     for (const auto &b : _soft_modules)
+//     {
+//         // Format: <Name> <NumCorners>
+//         outputFile << b.getName() << " 4" << endl;
+
+//         // Apply the global Cluster Offset to get absolute coordinates
+//         size_t x1 = b.getX1() + _offsetX;
+//         size_t y1 = b.getY1() + _offsetY;
+//         size_t x2 = b.getX2() + _offsetX;
+//         size_t y2 = b.getY2() + _offsetY;
+
+//         //[cite_start] // Output 4 corners in CLOCKWISE order (starting Bottom-Left) [cite: 250]
+//         // 1. Bottom-Left
+//         outputFile << x1 << " " << y1 << endl;
+//         // 2. Top-Left
+//         outputFile << x1 << " " << y2 << endl;
+//         // 3. Top-Right
+//         outputFile << x2 << " " << y2 << endl;
+//         // 4. Bottom-Right
+//         outputFile << x2 << " " << y1 << endl;
+//     }
+// }
+
 void Floorplanner::outputResults(fstream &outputFile, double runtime)
 {
-    // 1. Ensure the tree is packed one last time to get clean relative coordinates
+    // 1. Ensure the tree is packed one last time
     _tree->pack();
 
     // 2. Output Header
-    // "HPWL <value>" (Precision to 1 decimal place)
-    // Note: We re-calculate HPWL here to ensure it includes the final offsets
     double finalHPWL = computeWirelength();
     outputFile << "HPWL " << fixed << setprecision(1) << finalHPWL << endl;
 
-    // 3. Output Soft Modules
-    // "SOFTMODULE <number>"
-    outputFile << "SOFTMODULE " << _soft_modules.size() << endl;
+    // NEW: Calculate REAL module count (exclude ghosts)
+    size_t realCount = 0;
+    for (const auto &b : _soft_modules)
+    {
+        if (!b.isGhost())
+            realCount++;
+    }
+
+    outputFile << "SOFTMODULE " << realCount << endl;
 
     for (const auto &b : _soft_modules)
     {
+        // NEW: Skip ghost blocks
+        if (b.isGhost())
+            continue;
+
         // Format: <Name> <NumCorners>
         outputFile << b.getName() << " 4" << endl;
 
-        // Apply the global Cluster Offset to get absolute coordinates
+        // Apply global Cluster Offset
         size_t x1 = b.getX1() + _offsetX;
         size_t y1 = b.getY1() + _offsetY;
         size_t x2 = b.getX2() + _offsetX;
         size_t y2 = b.getY2() + _offsetY;
 
-        //[cite_start] // Output 4 corners in CLOCKWISE order (starting Bottom-Left) [cite: 250]
-        // 1. Bottom-Left
+        // Output 4 corners in CLOCKWISE order (starting Bottom-Left)
         outputFile << x1 << " " << y1 << endl;
-        // 2. Top-Left
         outputFile << x1 << " " << y2 << endl;
-        // 3. Top-Right
         outputFile << x2 << " " << y2 << endl;
-        // 4. Bottom-Right
         outputFile << x2 << " " << y1 << endl;
     }
 }
@@ -670,21 +742,88 @@ protected:
     size_t _id;
 };
 
+// class Block : public Terminal
+// {
+// public:
+//     // Constructor for SOFT modules (Area is known, Dimensions flexible)
+//     Block(string &name, size_t minArea) : Terminal(name, 0, 0), _minArea(minArea), _isFixed(false)
+//     {
+//         // Default to square shape initially
+//         _w = static_cast<size_t>(sqrt(minArea));
+//         _h = _w;
+//         if (_w * _h < _minArea)
+//             _h++; // Ensure area constraint
+//     }
+
+//     // Constructor for FIXED modules (Dimensions and Position known)
+//     Block(string &name, size_t w, size_t h, size_t x, size_t y) : Terminal(name, x, y), _w(w), _h(h), _minArea(w * h), _isFixed(true)
+//     {
+//         _x2 = _x1 + _w;
+//         _y2 = _y1 + _h;
+//     }
+
+//     ~Block() {}
+
+//     // basic access methods
+//     size_t getWidth(bool rotate = false) const { return rotate ? _h : _w; }
+//     size_t getHeight(bool rotate = false) const { return rotate ? _w : _h; }
+//     size_t getArea() const { return _h * _w; }
+//     size_t getMinArea() const { return _minArea; }
+//     bool isFixed() const { return _isFixed; }
+
+//     // set functions
+//     void setWidth(size_t w) { _w = w; }
+//     void setHeight(size_t h) { _h = h; }
+//     void setID(size_t id) { _id = id; }
+
+//     // Resize function for Soft Modules (Aspect Ratio = H / W)
+//     void resize(double aspectRatio)
+//     {
+//         if (_isFixed)
+//             return;
+
+//         // Calculate W based on Area and AR: W = sqrt(Area / AR)
+//         _w = static_cast<size_t>(std::sqrt(_minArea / aspectRatio));
+//         // Calculate H based on W
+//         if (_w == 0)
+//             _w = 1; // Prevent div by zero
+//         _h = static_cast<size_t>(std::ceil((double)_minArea / _w));
+
+//         // Double check area constraint (integer math can be tricky)
+//         if (_w * _h < _minArea)
+//             _h++;
+//     }
+
+//     // other member functions
+//     void setNode(Node *node) { _node = node; }
+//     Node *getNode() { return _node; }
+
+// private:
+//     size_t _w;       // width of the block
+//     size_t _h;       // height of the block
+//     size_t _minArea; // NEW: Required minimum area
+//     bool _isFixed;   // NEW: Flag for fixed modules
+//     size_t _id;      // id of the block
+//     Node *_node;     // pointer to the parent node
+// };
+
 class Block : public Terminal
 {
 public:
     // Constructor for SOFT modules (Area is known, Dimensions flexible)
-    Block(string &name, size_t minArea) : Terminal(name, 0, 0), _minArea(minArea), _isFixed(false)
+    // ADDED: isGhost parameter (defaults to false)
+    Block(string &name, size_t minArea, bool isGhost = false)
+        : Terminal(name, 0, 0), _minArea(minArea), _isFixed(false), _isGhost(isGhost)
     {
-        // Default to square shape initially
         _w = static_cast<size_t>(sqrt(minArea));
         _h = _w;
         if (_w * _h < _minArea)
-            _h++; // Ensure area constraint
+            _h++;
     }
 
     // Constructor for FIXED modules (Dimensions and Position known)
-    Block(string &name, size_t w, size_t h, size_t x, size_t y) : Terminal(name, x, y), _w(w), _h(h), _minArea(w * h), _isFixed(true)
+    Block(string &name, size_t w, size_t h, size_t x, size_t y)
+        : Terminal(name, x, y), _w(w), _h(h), _minArea(w * h), _isFixed(true), _isGhost(false)
     {
         _x2 = _x1 + _w;
         _y2 = _y1 + _h;
@@ -699,6 +838,9 @@ public:
     size_t getMinArea() const { return _minArea; }
     bool isFixed() const { return _isFixed; }
 
+    // NEW: Ghost getter
+    bool isGhost() const { return _isGhost; }
+
     // set functions
     void setWidth(size_t w) { _w = w; }
     void setHeight(size_t h) { _h = h; }
@@ -710,29 +852,30 @@ public:
         if (_isFixed)
             return;
 
-        // Calculate W based on Area and AR: W = sqrt(Area / AR)
+        // Safety check for ghosts with very small area
+        if (_minArea == 0)
+            return;
+
         _w = static_cast<size_t>(std::sqrt(_minArea / aspectRatio));
-        // Calculate H based on W
         if (_w == 0)
-            _w = 1; // Prevent div by zero
+            _w = 1;
         _h = static_cast<size_t>(std::ceil((double)_minArea / _w));
 
-        // Double check area constraint (integer math can be tricky)
         if (_w * _h < _minArea)
             _h++;
     }
 
-    // other member functions
     void setNode(Node *node) { _node = node; }
     Node *getNode() { return _node; }
 
 private:
-    size_t _w;       // width of the block
-    size_t _h;       // height of the block
-    size_t _minArea; // NEW: Required minimum area
-    bool _isFixed;   // NEW: Flag for fixed modules
-    size_t _id;      // id of the block
-    Node *_node;     // pointer to the parent node
+    size_t _w;
+    size_t _h;
+    size_t _minArea;
+    bool _isFixed;
+    bool _isGhost; // NEW: Ghost flag
+    size_t _id;
+    Node *_node;
 };
 
 class Net
@@ -873,25 +1016,99 @@ using namespace std;
 
 // tree.cpp
 
+// void Tree::resizeRandom()
+// {
+//     if (_blocks.empty())
+//         return;
+
+//     // Pick a random block
+//     int randIdx = rand() % _blocks.size();
+
+//     // We must ensure we don't try to resize a Fixed block (though _blocks should only contain soft ones now)
+//     // But double check just in case:
+//     if (_blocks[randIdx].isFixed())
+//         return;
+
+//     // Generate random Aspect Ratio between 0.5 and 2.0
+//     // (rand / RAND_MAX) gives 0.0 to 1.0
+//     // formula: 0.5 + (0..1.5)
+//     double ar = 0.5 + (static_cast<double>(rand()) / RAND_MAX) * 1.5;
+
+//     _blocks[randIdx].resize(ar);
+// }
+
+// void Tree::resizeRandom()
+// {
+//     if (_blocks.empty())
+//         return;
+
+//     // Pick a random block
+//     int randIdx = rand() % _blocks.size();
+
+//     // Check if fixed
+//     if (_blocks[randIdx].isFixed())
+//         return;
+
+//     double ar;
+//     // NEW: Different Aspect Ratio range for Ghosts
+//     if (_blocks[randIdx].isGhost())
+//     {
+//         // Allow ghosts to range from 0.1 to 10.0 (very thin/wide)
+//         ar = 0.1 + (static_cast<double>(rand()) / RAND_MAX) * 9.9;
+//     }
+//     else
+//     {
+//         // Standard range for modules (0.5 to 2.0)
+//         ar = 0.5 + (static_cast<double>(rand()) / RAND_MAX) * 1.5;
+//     }
+
+//     _blocks[randIdx].resize(ar);
+// }
+
 void Tree::resizeRandom()
 {
     if (_blocks.empty())
         return;
 
-    // Pick a random block
     int randIdx = rand() % _blocks.size();
 
-    // We must ensure we don't try to resize a Fixed block (though _blocks should only contain soft ones now)
-    // But double check just in case:
+    // Skip fixed blocks
     if (_blocks[randIdx].isFixed())
         return;
 
-    // Generate random Aspect Ratio between 0.5 and 2.0
-    // (rand / RAND_MAX) gives 0.0 to 1.0
-    // formula: 0.5 + (0..1.5)
-    double ar = 0.5 + (static_cast<double>(rand()) / RAND_MAX) * 1.5;
+    Block &blk = _blocks[randIdx];
 
-    _blocks[randIdx].resize(ar);
+    // LOGIC FOR GHOST BLOCKS
+    if (blk.isGhost())
+    {
+        // 50% chance to become ACTIVE (Spacer)
+        // 50% chance to become INACTIVE (Zero Size)
+        double choice = (double)rand() / RAND_MAX;
+
+        if (choice < 0.5)
+        {
+            // BECOME INACTIVE (effectively delete)
+            blk.setWidth(0);
+            blk.setHeight(0);
+        }
+        else
+        {
+            // BECOME ACTIVE (restore/resize)
+            // Generate a random skinny/flat aspect ratio
+            double ar = 0.1 + ((double)rand() / RAND_MAX) * 9.9;
+
+            // This function uses _minArea to recalculate Width and Height
+            // effectively "Resurrecting" the ghost if it was previously 0
+            blk.resize(ar);
+        }
+    }
+    // LOGIC FOR REAL SOFT MODULES
+    else
+    {
+        // Standard aspect ratio resize (0.5 to 2.0)
+        double ar = 0.5 + ((double)rand() / RAND_MAX) * 1.5;
+        blk.resize(ar);
+    }
 }
 
 void Tree::buildInitial()
@@ -1652,6 +1869,33 @@ void Tree::pack()
     pack(_root, 0);
 }
 
+// void Tree::pack(Node *node, size_t baseX)
+// {
+//     if (!node)
+//         return;
+
+//     Block &blk = _blocks[node->getBlockIndex()];
+//     bool rotated = node->isRotated();
+//     size_t width = blk.getWidth(rotated);
+//     size_t height = blk.getHeight(rotated);
+
+//     size_t baseY = findMaxY(baseX, baseX + width);
+
+//     blk.setPos(baseX, baseY, baseX + width, baseY + height);
+
+//     updateContour(baseX, baseX + width, baseY + height);
+
+//     if (node->getLeft())
+//     {
+//         pack(node->getLeft(), baseX + width);
+//     }
+
+//     if (node->getRight())
+//     {
+//         pack(node->getRight(), baseX);
+//     }
+// }
+
 void Tree::pack(Node *node, size_t baseX)
 {
     if (!node)
@@ -1662,12 +1906,21 @@ void Tree::pack(Node *node, size_t baseX)
     size_t width = blk.getWidth(rotated);
     size_t height = blk.getHeight(rotated);
 
+    // 1. Calculate Y position (safe even if width is 0)
     size_t baseY = findMaxY(baseX, baseX + width);
 
+    // 2. Set position (if 0x0, x2=x1 and y2=y1, effectively a point)
     blk.setPos(baseX, baseY, baseX + width, baseY + height);
 
-    updateContour(baseX, baseX + width, baseY + height);
+    // 3. ONLY update contour if the block actually takes up space
+    if (width > 0 && height > 0)
+    {
+        updateContour(baseX, baseX + width, baseY + height);
+    }
 
+    // 4. Recurse (Standard B*-tree logic)
+    // If width is 0, the Left Child will be packed at (baseX + 0) = baseX,
+    // effectively "overlapping" the ghost but physically replacing it.
     if (node->getLeft())
     {
         pack(node->getLeft(), baseX + width);

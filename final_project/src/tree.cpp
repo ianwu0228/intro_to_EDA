@@ -66,32 +66,78 @@ using namespace std;
 //     _blocks[randIdx].resize(ar);
 // }
 
+// void Tree::resizeRandom()
+// {
+//     if (_blocks.empty())
+//         return;
+
+//     // Pick a random block
+//     int randIdx = rand() % _blocks.size();
+
+//     // Check if fixed
+//     if (_blocks[randIdx].isFixed())
+//         return;
+
+//     double ar;
+//     // NEW: Different Aspect Ratio range for Ghosts
+//     if (_blocks[randIdx].isGhost())
+//     {
+//         // Allow ghosts to range from 0.1 to 10.0 (very thin/wide)
+//         ar = 0.1 + (static_cast<double>(rand()) / RAND_MAX) * 9.9;
+//     }
+//     else
+//     {
+//         // Standard range for modules (0.5 to 2.0)
+//         ar = 0.5 + (static_cast<double>(rand()) / RAND_MAX) * 1.5;
+//     }
+
+//     _blocks[randIdx].resize(ar);
+// }
+
 void Tree::resizeRandom()
 {
     if (_blocks.empty())
         return;
 
-    // Pick a random block
     int randIdx = rand() % _blocks.size();
 
-    // Check if fixed
+    // Skip fixed blocks
     if (_blocks[randIdx].isFixed())
         return;
 
-    double ar;
-    // NEW: Different Aspect Ratio range for Ghosts
-    if (_blocks[randIdx].isGhost())
+    Block &blk = _blocks[randIdx];
+
+    // LOGIC FOR GHOST BLOCKS
+    if (blk.isGhost())
     {
-        // Allow ghosts to range from 0.1 to 10.0 (very thin/wide)
-        ar = 0.1 + (static_cast<double>(rand()) / RAND_MAX) * 9.9;
+        // 50% chance to become ACTIVE (Spacer)
+        // 50% chance to become INACTIVE (Zero Size)
+        double choice = (double)rand() / RAND_MAX;
+
+        if (choice < 0.5)
+        {
+            // BECOME INACTIVE (effectively delete)
+            blk.setWidth(0);
+            blk.setHeight(0);
+        }
+        else
+        {
+            // BECOME ACTIVE (restore/resize)
+            // Generate a random skinny/flat aspect ratio
+            double ar = 0.1 + ((double)rand() / RAND_MAX) * 9.9;
+
+            // This function uses _minArea to recalculate Width and Height
+            // effectively "Resurrecting" the ghost if it was previously 0
+            blk.resize(ar);
+        }
     }
+    // LOGIC FOR REAL SOFT MODULES
     else
     {
-        // Standard range for modules (0.5 to 2.0)
-        ar = 0.5 + (static_cast<double>(rand()) / RAND_MAX) * 1.5;
+        // Standard aspect ratio resize (0.5 to 2.0)
+        double ar = 0.5 + ((double)rand() / RAND_MAX) * 1.5;
+        blk.resize(ar);
     }
-
-    _blocks[randIdx].resize(ar);
 }
 
 void Tree::buildInitial()
@@ -852,6 +898,33 @@ void Tree::pack()
     pack(_root, 0);
 }
 
+// void Tree::pack(Node *node, size_t baseX)
+// {
+//     if (!node)
+//         return;
+
+//     Block &blk = _blocks[node->getBlockIndex()];
+//     bool rotated = node->isRotated();
+//     size_t width = blk.getWidth(rotated);
+//     size_t height = blk.getHeight(rotated);
+
+//     size_t baseY = findMaxY(baseX, baseX + width);
+
+//     blk.setPos(baseX, baseY, baseX + width, baseY + height);
+
+//     updateContour(baseX, baseX + width, baseY + height);
+
+//     if (node->getLeft())
+//     {
+//         pack(node->getLeft(), baseX + width);
+//     }
+
+//     if (node->getRight())
+//     {
+//         pack(node->getRight(), baseX);
+//     }
+// }
+
 void Tree::pack(Node *node, size_t baseX)
 {
     if (!node)
@@ -862,12 +935,21 @@ void Tree::pack(Node *node, size_t baseX)
     size_t width = blk.getWidth(rotated);
     size_t height = blk.getHeight(rotated);
 
+    // 1. Calculate Y position (safe even if width is 0)
     size_t baseY = findMaxY(baseX, baseX + width);
 
+    // 2. Set position (if 0x0, x2=x1 and y2=y1, effectively a point)
     blk.setPos(baseX, baseY, baseX + width, baseY + height);
 
-    updateContour(baseX, baseX + width, baseY + height);
+    // 3. ONLY update contour if the block actually takes up space
+    if (width > 0 && height > 0)
+    {
+        updateContour(baseX, baseX + width, baseY + height);
+    }
 
+    // 4. Recurse (Standard B*-tree logic)
+    // If width is 0, the Left Child will be packed at (baseX + 0) = baseX,
+    // effectively "overlapping" the ghost but physically replacing it.
     if (node->getLeft())
     {
         pack(node->getLeft(), baseX + width);

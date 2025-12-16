@@ -205,6 +205,9 @@ double Floorplanner::computeFixedOverlapPenalty()
     double totalOverlap = 0;
     for (const auto &soft : _soft_modules)
     {
+        if (soft.isGhost())
+            continue;
+
         // APPLY OFFSET HERE
         size_t sx1 = soft.getX1() + _offsetX;
         size_t sx2 = soft.getX2() + _offsetX;
