@@ -807,11 +807,33 @@ void Tree::clearContour()
     _contourHead = nullptr;
 }
 
+// void Tree::pack()
+// {
+//     clearContour();
+//     _contourHead = new ContourSegment(0, std::numeric_limits<size_t>::max(), 0);
+//     pack(_root, 0); // Start at origin
+// }
+
+// File: src/tree.cpp
+
 void Tree::pack()
 {
     clearContour();
+    // Initialize contour at y=0
     _contourHead = new ContourSegment(0, std::numeric_limits<size_t>::max(), 0);
-    pack(_root, 0); // Start at origin
+
+    // NEW: Initialize contour with Fixed Modules (Treat them as ground)
+    if (_fixed_modules)
+    {
+        for (const auto &fixed : *_fixed_modules)
+        {
+            // Update the contour to reflect the height of the fixed module
+            // This forces soft blocks to be placed on top of them if they overlap in X
+            updateContour(fixed.getX1(), fixed.getX2(), fixed.getY2());
+        }
+    }
+
+    pack(_root, 0); // Start packing soft modules
 }
 
 void Tree::pack(Node *node, size_t baseX)

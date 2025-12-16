@@ -44,6 +44,11 @@ public:
     void printTree(Node *node, int depth, int &count) const;
     int getNumofNodes() const { return _nodes.size(); }
 
+    void setFixedModules(const vector<Block> *fixed)
+    {
+        _fixed_modules = fixed;
+    }
+
     // horizontal segment of the contour
     struct ContourSegment
     {
@@ -99,6 +104,7 @@ private:
     void insertNode(Node *u, Node *target, bool asLeftChild); // helper: insert node into new location
 
     ContourSegment *_contourHead; // head of the contour list
+    const vector<Block> *_fixed_modules = nullptr;
 };
 
 #endif // TREE_H

@@ -102,6 +102,9 @@ void Floorplanner::parseInput(fstream &inputFile)
 
     // Initialize Tree with ONLY Soft Blocks
     _tree = new Tree(_soft_modules);
+
+    // Pass the fixed modules to the tree for contour initialization
+    _tree->setFixedModules(&_fixed_modules);
 }
 
 void Floorplanner::floorplan()
