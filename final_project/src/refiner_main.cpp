@@ -1,19 +1,31 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <unordered_map>
-#include <algorithm>
-#include <climits>
-#include <iomanip>
-#include <cmath>
-#include <set>
-
+#include <bits/stdc++.h>
 using namespace std;
 
-// --- DATA STRUCTURES ---
+/*
+  Build:
+    g++ -O3 -march=native -std=c++17 refiner_pixel.cpp -o refiner_pixel
 
-enum ModuleType
+  Run:
+    ./refiner_pixel <input_problem.txt> <stage1.out> <final.out>
+
+  Input problem format (your caseXX-input.txt):
+    CHIP W H
+    SOFTMODULE N
+      <name> <minArea>
+    FIXEDMODULE M
+      <name> x y w h
+    CONNECTION E
+      <name1> <name2> <weight>
+
+  Stage1 output format (your caseXX.out):
+    HPWL <value>
+    SOFTMODULE <N>
+    <name> <k>
+    x y
+    ... (k lines)
+*/
+
+enum class ModType
 {
     SOFT,
     FIXED
@@ -21,593 +33,818 @@ enum ModuleType
 
 struct Module
 {
-    int id;
+    int id = -1;
     string name;
-    ModuleType type;
-    size_t minArea;
+    ModType type = ModType::SOFT;
 
-    // Geometry State
-    // We track these incrementally to avoid O(N) scans
-    int x, y, w, h;
-    int currentArea;
+    long long minArea = 0;
 
-    // Physics
-    double forceX = 0.0;
-    double forceY = 0.0;
+    // Occupied area (in unit cells)
+    long long area = 0;
 
-    double centerX() const { return x + w / 2.0; }
-    double centerY() const { return y + h / 2.0; }
+    // Bounding box in half-open coords: [minx,maxx) x [miny,maxy)
+    int minx = 0, miny = 0, maxx = 0, maxy = 0;
+
+    // Priority/force direction
+    double fx = 0.0, fy = 0.0;
+
+    // Frontier as a bag of packed cells; we validate via inFrontier bitset
+    vector<int> frontier;
 };
 
-struct Net
+struct Edge
 {
-    int mod1_id;
-    int mod2_id;
-    int weight;
+    int to;
+    int w;
+};
+struct Net2
+{
+    int a, b, w;
 };
 
-// --- REFINER CLASS ---
+static inline int packCell(int x, int y, int W) { return y * W + x; }
+static inline int cellX(int p, int W) { return p % W; }
+static inline int cellY(int p, int W) { return p / W; }
 
-class Refiner
+static inline long long keyVertex(int x, int y)
+{
+    return ((long long)x << 32) ^ (unsigned int)y;
+}
+
+class RefinerPixel
 {
 public:
-    int chipWidth, chipHeight;
-    vector<Module> modules;
-    vector<Net> nets;
-    unordered_map<string, int> nameToId;
+    int chipW = 0, chipH = 0;
+    vector<Module> mods;
+    unordered_map<string, int> name2id;
 
-    // The Grid: -1 = Empty, >=0 = Module ID
-    vector<vector<int>> grid;
+    vector<Net2> nets;
+    vector<vector<Edge>> adj;
 
-    // --- 1. PARSING INPUT ---
-    void parseInput(string filename)
+    // grid cell owner: -1 empty else module id
+    vector<int> grid;
+
+    // inFrontier[m][cell] => bool (stored as vector<uint8_t>)
+    vector<vector<uint8_t>> inFrontier;
+
+    // Tunables
+    int maxRounds = 1000;
+    int maxStepsPerModPerRound = 200;
+
+    // constraints
+    double aspectMin = 0.5;
+    double aspectMax = 2.0;
+    double rectRatioMin = 0.80;
+
+    // acceptance
+    double hpwlEps = 0.0;     // allow small worsening; try 0, 100, 1000
+    bool allowNeutral = true; // allow dHPWL == 0
+
+    // direction bias
+    double dirBias = 1e-3; // tiny
+
+    // -------- parsing --------
+    void parseProblem(const string &filename)
     {
-        ifstream infile(filename);
-        if (!infile)
-        {
-            cerr << "Error: Input file " << filename << " not found!" << endl;
-            exit(1);
-        }
+        ifstream in(filename);
+        if (!in)
+            throw runtime_error("Cannot open input problem: " + filename);
 
-        string token;
-        while (infile >> token)
+        string tok;
+        while (in >> tok)
         {
-            if (token == "CHIP")
+            if (tok == "CHIP")
             {
-                infile >> chipWidth >> chipHeight;
+                in >> chipW >> chipH;
             }
-            else if (token == "SOFTMODULE")
+            else if (tok == "SOFTMODULE")
             {
-                int num;
-                infile >> num;
-                for (int i = 0; i < num; ++i)
+                int n;
+                in >> n;
+                for (int i = 0; i < n; i++)
                 {
+                    string nm;
+                    long long minA;
+                    in >> nm >> minA;
                     Module m;
-                    infile >> m.name >> m.minArea;
-                    m.type = SOFT;
-                    m.id = modules.size();
-                    m.x = 0;
-                    m.y = 0;
-                    m.w = 0;
-                    m.h = 0;
-                    m.currentArea = 0;
-                    nameToId[m.name] = m.id;
-                    modules.push_back(m);
+                    m.id = (int)mods.size();
+                    m.name = nm;
+                    m.type = ModType::SOFT;
+                    m.minArea = minA;
+                    mods.push_back(std::move(m));
+                    name2id[nm] = mods.back().id;
                 }
             }
-            else if (token == "FIXEDMODULE")
+            else if (tok == "FIXEDMODULE")
             {
-                int num;
-                infile >> num;
-                for (int i = 0; i < num; ++i)
+                int m;
+                in >> m;
+                for (int i = 0; i < m; i++)
                 {
-                    Module m;
-                    infile >> m.name >> m.x >> m.y >> m.w >> m.h;
-                    m.type = FIXED;
-                    m.minArea = m.w * m.h; // Fixed implicitly
-                    m.id = modules.size();
-                    m.currentArea = m.w * m.h;
-                    nameToId[m.name] = m.id;
-                    modules.push_back(m);
+                    string nm;
+                    int x, y, w, h;
+                    in >> nm >> x >> y >> w >> h;
+                    Module md;
+                    md.id = (int)mods.size();
+                    md.name = nm;
+                    md.type = ModType::FIXED;
+                    md.minArea = 1LL * w * h;
+                    md.area = md.minArea;
+                    md.minx = x;
+                    md.miny = y;
+                    md.maxx = x + w;
+                    md.maxy = y + h;
+                    mods.push_back(std::move(md));
+                    name2id[nm] = mods.back().id;
                 }
             }
-            else if (token == "CONNECTION")
+            else if (tok == "CONNECTION")
             {
-                int num;
-                infile >> num;
-                for (int i = 0; i < num; ++i)
+                int e;
+                in >> e;
+                nets.reserve(e);
+                for (int i = 0; i < e; i++)
                 {
-                    string n1, n2;
+                    string a, b;
                     int w;
-                    infile >> n1 >> n2 >> w;
-                    if (nameToId.count(n1) && nameToId.count(n2))
-                    {
-                        nets.push_back({nameToId[n1], nameToId[n2], w});
-                    }
+                    in >> a >> b >> w;
+                    int ia = name2id.at(a);
+                    int ib = name2id.at(b);
+                    nets.push_back({ia, ib, w});
                 }
             }
-        }
-    }
-
-    // --- 2. PARSING STAGE 1 OUTPUT ---
-    void parseStage1Output(string filename)
-    {
-        ifstream infile(filename);
-        if (!infile)
-        {
-            cerr << "Error: Stage 1 output " << filename << " not found!" << endl;
-            exit(1);
-        }
-
-        string token;
-        while (infile >> token)
-        {
-            if (nameToId.count(token))
+            else
             {
-                int id = nameToId[token];
-                Module &m = modules[id];
-
-                int numCorners;
-                infile >> numCorners;
-                int minX = INT_MAX, maxX = INT_MIN;
-                int minY = INT_MAX, maxY = INT_MIN;
-
-                for (int i = 0; i < numCorners; ++i)
-                {
-                    int cx, cy;
-                    infile >> cx >> cy;
-                    if (cx < minX)
-                        minX = cx;
-                    if (cx > maxX)
-                        maxX = cx;
-                    if (cy < minY)
-                        minY = cy;
-                    if (cy > maxY)
-                        maxY = cy;
-                }
-                m.x = minX;
-                m.y = minY;
-                m.w = maxX - minX;
-                m.h = maxY - minY;
-                // currentArea will be calculated in buildGrid
+                // ignore unknown tokens
             }
         }
+
+        // adjacency
+        adj.assign(mods.size(), {});
+        for (auto &n : nets)
+        {
+            adj[n.a].push_back({n.b, n.w});
+            adj[n.b].push_back({n.a, n.w});
+        }
     }
 
-    // --- 3. GRID BUILDER (Optimized Initialization) ---
-    void buildGrid()
+    void parseStage1(const string &stage1file)
     {
-        cout << "Building Grid " << chipWidth << "x" << chipHeight << "..." << endl;
-        grid.assign(chipWidth, vector<int>(chipHeight, -1));
+        ifstream in(stage1file);
+        if (!in)
+            throw runtime_error("Cannot open stage1: " + stage1file);
 
-        for (auto &m : modules)
+        string tok;
+        in >> tok;
+        if (tok != "HPWL")
+            throw runtime_error("stage1: expected HPWL");
+        double dummy;
+        in >> dummy;
+
+        in >> tok;
+        if (tok != "SOFTMODULE")
+            throw runtime_error("stage1: expected SOFTMODULE");
+        int n;
+        in >> n;
+
+        for (int i = 0; i < n; i++)
         {
-            m.currentArea = 0;
-            int endX = min(chipWidth, m.x + m.w);
-            int endY = min(chipHeight, m.y + m.h);
+            string nm;
+            int k;
+            in >> nm >> k;
+            int id = name2id.at(nm);
 
-            // Recalculate tight bounding box while painting
-            int trueMinX = INT_MAX, trueMaxX = INT_MIN;
-            int trueMinY = INT_MAX, trueMaxY = INT_MIN;
-
-            for (int x = max(0, m.x); x < endX; ++x)
+            int minX = INT_MAX, minY = INT_MAX, maxX = INT_MIN, maxY = INT_MIN;
+            for (int j = 0; j < k; j++)
             {
-                for (int y = max(0, m.y); y < endY; ++y)
-                {
-                    grid[x][y] = m.id;
-                    m.currentArea++;
-
-                    if (x < trueMinX)
-                        trueMinX = x;
-                    if (x > trueMaxX)
-                        trueMaxX = x;
-                    if (y < trueMinY)
-                        trueMinY = y;
-                    if (y > trueMaxY)
-                        trueMaxY = y;
-                }
+                int x, y;
+                in >> x >> y;
+                minX = min(minX, x);
+                minY = min(minY, y);
+                maxX = max(maxX, x);
+                maxY = max(maxY, y);
             }
 
-            // Sync module state with reality
-            if (m.currentArea > 0)
-            {
-                m.x = trueMinX;
-                m.y = trueMinY;
-                m.w = trueMaxX - trueMinX + 1;
-                m.h = trueMaxY - trueMinY + 1;
-            }
+            // Convert corner bbox into half-open bbox.
+            // If corners include (x+w, y+h), then half-open max is exactly that.
+            mods[id].minx = minX;
+            mods[id].miny = minY;
+            mods[id].maxx = maxX;
+            mods[id].maxy = maxY;
+
+            int w = mods[id].maxx - mods[id].minx;
+            int h = mods[id].maxy - mods[id].miny;
+            if (w <= 0 || h <= 0)
+                throw runtime_error("stage1: invalid rect for " + nm);
+            mods[id].area = 1LL * w * h;
         }
     }
 
-    // --- PHYSICS ---
-    void calculateForces()
+    // -------- geometry helpers --------
+    inline double centerX(const Module &m) const { return 0.5 * (m.minx + m.maxx); }
+    inline double centerY(const Module &m) const { return 0.5 * (m.miny + m.maxy); }
+
+    double totalHPWL() const
     {
-        for (auto &m : modules)
+        double s = 0.0;
+        for (auto &n : nets)
         {
-            m.forceX = 0;
-            m.forceY = 0;
+            const auto &A = mods[n.a];
+            const auto &B = mods[n.b];
+            s += (double)n.w * (fabs(centerX(A) - centerX(B)) + fabs(centerY(A) - centerY(B)));
         }
-        for (const auto &net : nets)
-        {
-            Module &m1 = modules[net.mod1_id];
-            Module &m2 = modules[net.mod2_id];
-            double dx = m2.centerX() - m1.centerX();
-            double dy = m2.centerY() - m1.centerY();
-            m1.forceX += dx * net.weight;
-            m1.forceY += dy * net.weight;
-            m2.forceX -= dx * net.weight;
-            m2.forceY -= dy * net.weight;
-        }
+        return s;
     }
 
-    // --- OPTIMIZATION LOOP ---
-    void optimize()
+    bool bboxLegal(const Module &m, int nminx, int nminy, int nmaxx, int nmaxy, long long narea) const
     {
-        int maxRounds = 15;
-        cout << "Starting optimization (" << maxRounds << " rounds)..." << endl;
-
-        for (int round = 0; round < maxRounds; ++round)
-        {
-            calculateForces();
-
-            // Sort by urgency
-            vector<int> sortedIds;
-            for (auto &m : modules)
-                if (m.type == SOFT)
-                    sortedIds.push_back(m.id);
-
-            sort(sortedIds.begin(), sortedIds.end(), [&](int a, int b)
-                 { return (abs(modules[a].forceX) + abs(modules[a].forceY)) >
-                          (abs(modules[b].forceX) + abs(modules[b].forceY)); });
-
-            int totalExpanded = 0;
-            for (int id : sortedIds)
-            {
-                totalExpanded += expandModule(modules[id]);
-            }
-            cout << "Round " << round << ": Expanded " << totalExpanded << " pixels." << endl;
-            if (totalExpanded == 0)
-                break;
-        }
-    }
-
-    // --- HELPER: Find Border Whitespace ---
-    vector<pair<int, int>> getExpansionCandidates(const Module &m)
-    {
-        vector<pair<int, int>> candidates;
-
-        // Scan bounding box + 1 padding
-        int sX1 = max(0, m.x - 1);
-        int sY1 = max(0, m.y - 1);
-        int sX2 = min(chipWidth, m.x + m.w + 1);
-        int sY2 = min(chipHeight, m.y + m.h + 1);
-
-        for (int x = sX1; x < sX2; ++x)
-        {
-            for (int y = sY1; y < sY2; ++y)
-            {
-                if (grid[x][y] == -1)
-                {
-                    // Check if any 4-neighbor is THIS module
-                    if ((isValid(x + 1, y) && grid[x + 1][y] == m.id) ||
-                        (isValid(x - 1, y) && grid[x - 1][y] == m.id) ||
-                        (isValid(x, y + 1) && grid[x][y + 1] == m.id) ||
-                        (isValid(x, y - 1) && grid[x][y - 1] == m.id))
-                    {
-                        candidates.push_back({x, y});
-                    }
-                }
-            }
-        }
-        return candidates;
-    }
-
-    // --- O(1) INCREMENTAL CONSTRAINT CHECK ---
-    bool checkTentativeConstraints(const Module &m, int newArea, int newW, int newH)
-    {
-        // 1. Min Area Check
-        if (newArea < m.minArea)
+        if (nminx < 0 || nminy < 0 || nmaxx > chipW || nmaxy > chipH)
+            return false;
+        int w = nmaxx - nminx;
+        int h = nmaxy - nminy;
+        if (w <= 0 || h <= 0)
             return false;
 
-        // 2. Aspect Ratio Check
-        double ar = (double)newH / (double)newW;
-        if (ar < 0.5 || ar > 2.0)
+        double ar = (double)w / (double)h;
+        if (ar < aspectMin || ar > aspectMax)
             return false;
 
-        // 3. Rect Ratio Check
-        double bbArea = (double)newW * newH;
-        if ((double)newArea / bbArea < 0.80)
+        long long bboxArea = 1LL * w * h;
+        double rr = (double)narea / (double)bboxArea;
+        if (rr < rectRatioMin || rr > 1.0)
             return false;
 
+        if (narea < m.minArea)
+            return false;
         return true;
     }
 
-    // --- EXPANSION LOGIC ---
-    int expandModule(Module &m)
+    // -------- build grid + init frontier --------
+    void buildGridAndFrontiers()
     {
-        int pixelsAdded = 0;
-        int limit = 100; // Max pixels per round per module
-        // Suggestion: Allow larger modules to grow faster
-        // int limit = max(20, (int)sqrt(m.w * m.h) / 20);
+        if (chipW <= 0 || chipH <= 0)
+            throw runtime_error("Invalid CHIP size");
+        grid.assign((size_t)chipW * (size_t)chipH, -1);
 
-        while (limit-- > 0)
+        auto paintRect = [&](int id, int minx, int miny, int maxx, int maxy)
         {
-            // 1. Get Candidates
-            vector<pair<int, int>> candidates = getExpansionCandidates(m);
-            if (candidates.empty())
-                break;
-
-            int bestCand = -1;
-            double bestScore = -1e9;
-            double currentHPWL = calcLocalHPWL(m.id, m.centerX(), m.centerY());
-
-            for (int i = 0; i < candidates.size(); ++i)
+            for (int y = miny; y < maxy; y++)
             {
-                int cx = candidates[i].first;
-                int cy = candidates[i].second;
-
-                // Physics Alignment
-                double vecX = cx - m.centerX();
-                double vecY = cy - m.centerY();
-                double alignment = vecX * m.forceX + vecY * m.forceY;
-
-                if (alignment > 0)
+                size_t base = (size_t)y * (size_t)chipW;
+                for (int x = minx; x < maxx; x++)
                 {
-                    // --- Tentative Geometry Calc (O(1)) ---
-                    int newArea = m.currentArea + 1;
-                    int newMinX = min(m.x, cx);
-                    int newMinY = min(m.y, cy);
-                    int newMaxX = max(m.x + m.w - 1, cx);
-                    int newMaxY = max(m.y + m.h - 1, cy);
-                    int newW = newMaxX - newMinX + 1;
-                    int newH = newMaxY - newMinY + 1;
-
-                    // --- Fast Check ---
-                    if (checkTentativeConstraints(m, newArea, newW, newH))
+                    int &cell = grid[base + (size_t)x];
+                    if (cell != -1)
                     {
-
-                        // --- Tentative HPWL Calc (Fast) ---
-                        double newCX = newMinX + newW / 2.0;
-                        double newCY = newMinY + newH / 2.0;
-
-                        // We assume moving 1 pixel doesn't change other modules' centers
-                        double newHPWL = calcLocalHPWL(m.id, newCX, newCY);
-                        double benefit = currentHPWL - newHPWL;
-
-                        // Score Heuristic
-                        double score = benefit + (alignment * 0.0001);
-
-                        // Condition to Accept
-                        if (benefit >= 0 || (benefit > -50 && alignment > 1000))
-                        {
-                            if (score > bestScore)
-                            {
-                                bestScore = score;
-                                bestCand = i;
-                            }
-                        }
+                        throw runtime_error("Overlap painting " + mods[id].name + " with " + mods[cell].name);
                     }
+                    cell = id;
+                }
+            }
+        };
+
+        // paint fixed then soft
+        for (auto &m : mods)
+            if (m.type == ModType::FIXED)
+                paintRect(m.id, m.minx, m.miny, m.maxx, m.maxy);
+        for (auto &m : mods)
+            if (m.type == ModType::SOFT)
+                paintRect(m.id, m.minx, m.miny, m.maxx, m.maxy);
+
+        // frontier bitsets
+        inFrontier.assign(mods.size(), vector<uint8_t>((size_t)chipW * (size_t)chipH, 0));
+
+        // init frontiers: all empty cells adjacent (4-neighbor) to module cells on bbox boundary.
+        // For speed, we only scan bbox boundary of each soft module (rect initially).
+        for (auto &m : mods)
+        {
+            if (m.type != ModType::SOFT)
+                continue;
+            m.frontier.clear();
+            addFrontierFromBBoxBoundary(m);
+        }
+    }
+
+    void frontierAdd(Module &m, int x, int y)
+    {
+        if (x < 0 || y < 0 || x >= chipW || y >= chipH)
+            return;
+        int p = packCell(x, y, chipW);
+        if (grid[p] != -1)
+            return;
+        if (inFrontier[m.id][p])
+            return;
+        inFrontier[m.id][p] = 1;
+        m.frontier.push_back(p);
+    }
+
+    void addFrontierFromBBoxBoundary(Module &m)
+    {
+        // left/right edges
+        for (int y = m.miny; y < m.maxy; y++)
+        {
+            frontierAdd(m, m.minx - 1, y);
+            frontierAdd(m, m.maxx, y);
+        }
+        // bottom/top edges
+        for (int x = m.minx; x < m.maxx; x++)
+        {
+            frontierAdd(m, x, m.miny - 1);
+            frontierAdd(m, x, m.maxy);
+        }
+    }
+
+    // After adding a pixel to module, update frontier locally.
+    void updateFrontierAfterAdd(Module &m, int px, int py)
+    {
+        // The added pixel itself should not remain frontier
+        int p = packCell(px, py, chipW);
+        inFrontier[m.id][p] = 0;
+
+        // Add its empty neighbors
+        frontierAdd(m, px - 1, py);
+        frontierAdd(m, px + 1, py);
+        frontierAdd(m, px, py - 1);
+        frontierAdd(m, px, py + 1);
+    }
+
+    // -------- forces / priority --------
+    void computeForces()
+    {
+        for (auto &m : mods)
+        {
+            m.fx = 0;
+            m.fy = 0;
+        }
+        for (auto &n : nets)
+        {
+            auto &A = mods[n.a];
+            auto &B = mods[n.b];
+            double ax = centerX(A), ay = centerY(A);
+            double bx = centerX(B), by = centerY(B);
+            double dx = bx - ax, dy = by - ay;
+            A.fx += n.w * dx;
+            A.fy += n.w * dy;
+            B.fx -= n.w * dx;
+            B.fy -= n.w * dy;
+        }
+    }
+
+    // ΔHPWL if module m bbox becomes (nminx,nminy,nmaxx,nmaxy)
+    double deltaHPWL_bbox(const Module &m, int nminx, int nminy, int nmaxx, int nmaxy) const
+    {
+        double oldCx = centerX(m), oldCy = centerY(m);
+        double newCx = 0.5 * (nminx + nmaxx), newCy = 0.5 * (nminy + nmaxy);
+
+        double d = 0.0;
+        for (const auto &e : adj[m.id])
+        {
+            const Module &o = mods[e.to];
+            double ox = centerX(o), oy = centerY(o);
+            double old = fabs(oldCx - ox) + fabs(oldCy - oy);
+            double neu = fabs(newCx - ox) + fabs(newCy - oy);
+            d += (double)e.w * (neu - old);
+        }
+        return d;
+    }
+
+    // Candidate evaluation for adding pixel (x,y) to module m
+    bool canAddPixel(const Module &m, int x, int y) const
+    {
+        if (x < 0 || y < 0 || x >= chipW || y >= chipH)
+            return false;
+        int p = packCell(x, y, chipW);
+        if (grid[p] != -1)
+            return false;
+
+        // Must be 4-neighbor adjacent to module to preserve connectivity
+        // (Frontier is built that way, but re-check is cheap and safer.)
+        bool adjacent = false;
+        if (x > 0 && grid[p - 1] == m.id)
+            adjacent = true;
+        if (x + 1 < chipW && grid[p + 1] == m.id)
+            adjacent = true;
+        if (y > 0 && grid[p - chipW] == m.id)
+            adjacent = true;
+        if (y + 1 < chipH && grid[p + chipW] == m.id)
+            adjacent = true;
+        if (!adjacent)
+            return false;
+
+        // compute new bbox
+        int nminx = min(m.minx, x);
+        int nminy = min(m.miny, y);
+        int nmaxx = max(m.maxx, x + 1);
+        int nmaxy = max(m.maxy, y + 1);
+        long long narea = m.area + 1;
+
+        return bboxLegal(m, nminx, nminy, nmaxx, nmaxy, narea);
+    }
+
+    // Apply pixel add
+    void applyAddPixel(Module &m, int x, int y)
+    {
+        int p = packCell(x, y, chipW);
+        grid[p] = m.id;
+        m.area += 1;
+        m.minx = min(m.minx, x);
+        m.miny = min(m.miny, y);
+        m.maxx = max(m.maxx, x + 1);
+        m.maxy = max(m.maxy, y + 1);
+        updateFrontierAfterAdd(m, x, y);
+    }
+
+    // Choose best candidate from frontier bag (lazy cleanup of stale entries)
+    bool expandOneStep(Module &m)
+    {
+        if (m.frontier.empty())
+            return false;
+
+        double mag = hypot(m.fx, m.fy);
+        double dx = (mag > 1e-12) ? m.fx / mag : 0.0;
+        double dy = (mag > 1e-12) ? m.fy / mag : 0.0;
+
+        int bestIdx = -1;
+        double bestScore = -1e300;
+        double bestDHP = 0.0;
+        int bestX = 0, bestY = 0;
+        int bestMinx = 0, bestMiny = 0, bestMaxx = 0, bestMaxy = 0;
+
+        // Scan frontier bag (can include stale entries; skip them)
+        for (int i = (int)m.frontier.size() - 1; i >= 0; i--)
+        {
+            int p = m.frontier[i];
+
+            // If it's no longer marked frontier, it's stale
+            if (!inFrontier[m.id][p])
+                continue;
+
+            // If it is occupied now, stale => unmark
+            if (grid[p] != -1)
+            {
+                inFrontier[m.id][p] = 0;
+                continue;
+            }
+
+            int x = cellX(p, chipW), y = cellY(p, chipW);
+
+            if (!canAddPixel(m, x, y))
+            {
+                // keep it frontier for later? usually no, because legality depends on bbox and may change.
+                // We'll keep it; legality can become true later.
+                continue;
+            }
+
+            // new bbox
+            int nminx = min(m.minx, x);
+            int nminy = min(m.miny, y);
+            int nmaxx = max(m.maxx, x + 1);
+            int nmaxy = max(m.maxy, y + 1);
+
+            double dHP = deltaHPWL_bbox(m, nminx, nminy, nmaxx, nmaxy);
+
+            // direction dot: from current bbox center to the new pixel
+            double cx = centerX(m), cy = centerY(m);
+            double vpx = (x + 0.5) - cx;
+            double vpy = (y + 0.5) - cy;
+            double vmag = hypot(vpx, vpy);
+            double dirDot = 0.0;
+            if (vmag > 1e-12)
+                dirDot = (vpx / vmag) * dx + (vpy / vmag) * dy;
+
+            // score: prefer more HPWL decrease, and slight preference to direction
+            // minimize dHP; so score uses -dHP
+            double score = (-dHP) + dirBias * dirDot;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestIdx = i;
+                bestDHP = dHP;
+                bestX = x;
+                bestY = y;
+                bestMinx = nminx;
+                bestMiny = nminy;
+                bestMaxx = nmaxx;
+                bestMaxy = nmaxy;
+            }
+        }
+
+        if (bestIdx < 0)
+            return false;
+
+        // Accept rule
+        if (bestDHP < 0.0 || (allowNeutral && bestDHP == 0.0) || bestDHP <= hpwlEps)
+        {
+            applyAddPixel(m, bestX, bestY);
+            return true;
+        }
+        return false;
+    }
+
+    // -------- optimize loop --------
+    void optimize()
+    {
+        for (int r = 1; r <= maxRounds; r++)
+        {
+            cout << "Round " << r << "/" << maxRounds << "\n";
+            computeForces();
+            double cur = totalHPWL();
+            cout << "Refinement round " << r << "/" << maxRounds
+                 << ", current HPWL = " << scientific << setprecision(6) << cur << "\n";
+
+            // order by force magnitude
+            vector<int> order;
+            for (auto &m : mods)
+                if (m.type == ModType::SOFT)
+                    order.push_back(m.id);
+            sort(order.begin(), order.end(), [&](int a, int b)
+                 {
+        double ma=hypot(mods[a].fx,mods[a].fy);
+        double mb=hypot(mods[b].fx,mods[b].fy);
+        return ma>mb; });
+
+            long long roundAdds = 0;
+            for (int id : order)
+            {
+                Module &m = mods[id];
+
+                int adds = 0;
+                for (int step = 0; step < maxStepsPerModPerRound; step++)
+                {
+                    if (!expandOneStep(m))
+                        break;
+                    adds++;
+                }
+                if (adds > 0)
+                {
+                    roundAdds += adds;
+                    cout << "  Module " << m.name << " expanded by " << adds << " pixels\n";
                 }
             }
 
-            // 2. Commit Best
-            if (bestCand != -1)
+            if (roundAdds == 0)
             {
-                pair<int, int> p = candidates[bestCand];
-
-                // Update Grid
-                grid[p.first][p.second] = m.id;
-
-                // Update Module State (Incremental)
-                m.currentArea++;
-                int newMinX = min(m.x, p.first);
-                int newMinY = min(m.y, p.second);
-                int newMaxX = max(m.x + m.w - 1, p.first);
-                int newMaxY = max(m.y + m.h - 1, p.second);
-                m.x = newMinX;
-                m.y = newMinY;
-                m.w = newMaxX - newMinX + 1;
-                m.h = newMaxY - newMinY + 1;
-
-                pixelsAdded++;
-            }
-            else
-            {
-                break; // No valid moves
+                cout << "  No expansions accepted this round; stopping early.\n";
+                break;
             }
         }
-        return pixelsAdded;
     }
 
-    // --- UTILS ---
-    bool isValid(int x, int y)
+    // -------- polygon output from occupied cells --------
+    // Build boundary edges for a module from grid cells within bbox, then stitch into one cycle.
+    vector<pair<int, int>> extractPolygon(const Module &m) const
     {
-        return x >= 0 && x < chipWidth && y >= 0 && y < chipHeight;
-    }
-
-    // Optimized HPWL Calc: Accepts custom center to avoid modifying object
-    double calcLocalHPWL(int modId, double cx, double cy)
-    {
-        double hpwl = 0;
-        for (const auto &net : nets)
+        // Collect directed boundary edges along grid lines.
+        // Each occupied cell contributes edges where neighbor is not same module.
+        // We'll store edges as (from)->(to) with integer vertices.
+        struct DirEdge
         {
-            if (net.mod1_id == modId || net.mod2_id == modId)
-            {
-                // Get the OTHER module
-                int otherId = (net.mod1_id == modId) ? net.mod2_id : net.mod1_id;
-                const Module &other = modules[otherId];
+            int x1, y1, x2, y2;
+            int dir;
+        }; // dir:0E 1N 2W 3S
+        vector<DirEdge> edges;
+        edges.reserve((size_t)m.area * 2);
 
-                hpwl += (abs(cx - other.centerX()) + abs(cy - other.centerY())) * net.weight;
-            }
-        }
-        return hpwl;
-    }
-
-    // --- ROBUST TURTLE TRACING (For Output) ---
-    vector<pair<int, int>> traceCorners(const Module &m)
-    {
-        vector<pair<int, int>> corners;
-
-        // 1. Find Start Pixel (Bottom-Left most pixel)
-        int startX = -1, startY = -1;
-        bool found = false;
-
-        // Scan bottom-up
-        int endY = min(chipHeight, m.y + m.h + 1);
-        int endX = min(chipWidth, m.x + m.w + 1);
-
-        for (int y = max(0, m.y); y < endY; ++y)
+        auto isOcc = [&](int x, int y) -> bool
         {
-            for (int x = max(0, m.x); x < endX; ++x)
+            if (x < 0 || y < 0 || x >= chipW || y >= chipH)
+                return false;
+            return grid[packCell(x, y, chipW)] == m.id;
+        };
+
+        for (int y = m.miny; y < m.maxy; y++)
+        {
+            for (int x = m.minx; x < m.maxx; x++)
             {
-                if (grid[x][y] == m.id)
+                if (!isOcc(x, y))
+                    continue;
+
+                // cell square corners: (x,y) to (x+1,y+1)
+                // Left side boundary if (x-1,y) not occ
+                if (!isOcc(x - 1, y))
                 {
-                    startX = x;
-                    startY = y;
-                    found = true;
+                    edges.push_back({x, y, x, y + 1, 1}); // up along left side => dir=N
+                }
+                // Right side boundary if (x+1,y) not occ
+                if (!isOcc(x + 1, y))
+                {
+                    edges.push_back({x + 1, y + 1, x + 1, y, 3}); // down along right side => dir=S (to keep CCW)
+                }
+                // Bottom boundary if (x,y-1) not occ
+                if (!isOcc(x, y - 1))
+                {
+                    edges.push_back({x + 1, y, x, y, 2}); // west along bottom => dir=W (CCW)
+                }
+                // Top boundary if (x,y+1) not occ
+                if (!isOcc(x, y + 1))
+                {
+                    edges.push_back({x, y + 1, x + 1, y + 1, 0}); // east along top => dir=E
+                }
+            }
+        }
+
+        if (edges.empty())
+        {
+            // fallback: bbox rectangle
+            return {
+                {m.minx, m.miny}, {m.minx, m.maxy}, {m.maxx, m.maxy}, {m.maxx, m.miny}};
+        }
+
+        // Build outgoing edge lists keyed by start vertex
+        unordered_map<long long, vector<int>> out;
+        out.reserve(edges.size() * 2);
+
+        long long startKey = LLONG_MAX;
+        int startEdge = -1;
+
+        for (int i = 0; i < (int)edges.size(); i++)
+        {
+            auto &e = edges[i];
+            long long k = keyVertex(e.x1, e.y1);
+            out[k].push_back(i);
+
+            // choose lexicographically smallest start vertex as starting point
+            // to get deterministic polygon
+            long long lex = ((long long)e.y1 << 32) ^ (unsigned int)e.x1;
+            if (lex < startKey)
+            {
+                startKey = lex;
+                startEdge = i;
+            }
+        }
+
+        // Helper: direction from edge endpoints (we already store dir)
+        auto turnCost = [&](int curDir, int nextDir) -> int
+        {
+            // prefer left turns to keep CCW boundary:
+            // define cost: straight(0), left(1), right(2), back(3) in preference order
+            // With dir coding E(0),N(1),W(2),S(3)
+            int d = (nextDir - curDir + 4) % 4;
+            // d==0 straight, d==1 left, d==3 right, d==2 back
+            if (d == 0)
+                return 0;
+            if (d == 1)
+                return 1;
+            if (d == 3)
+                return 2;
+            return 3;
+        };
+
+        // Traverse with left-hand rule.
+        vector<pair<int, int>> poly;
+        poly.reserve(edges.size() + 1);
+
+        int curEdge = startEdge;
+        int curDir = edges[curEdge].dir;
+        int sx = edges[curEdge].x1, sy = edges[curEdge].y1;
+        int cx = sx, cy = sy;
+
+        // add first vertex
+        poly.push_back({cx, cy});
+
+        // walk
+        int safe = 0;
+        while (true)
+        {
+            auto &e = edges[curEdge];
+            int nx = e.x2, ny = e.y2;
+            cx = nx;
+            cy = ny;
+            poly.push_back({cx, cy});
+
+            if (cx == sx && cy == sy)
+                break;
+
+            long long k = keyVertex(cx, cy);
+            auto it = out.find(k);
+            if (it == out.end())
+            {
+                break; // broken boundary
+            }
+            // choose next edge by minimal turn cost; if tie, deterministic by next vertex
+            int best = -1;
+            int bestC = 999;
+            int bestNextY = INT_MAX, bestNextX = INT_MAX;
+
+            for (int idx : it->second)
+            {
+                auto &ne = edges[idx];
+                int cost = turnCost(curDir, ne.dir);
+                // next endpoint for tie-break
+                int tx = ne.x2, ty = ne.y2;
+                if (cost < bestC || (cost == bestC && (ty < bestNextY || (ty == bestNextY && tx < bestNextX))))
+                {
+                    bestC = cost;
+                    best = idx;
+                    bestNextX = tx;
+                    bestNextY = ty;
+                }
+            }
+            if (best < 0)
+                break;
+            curEdge = best;
+            curDir = edges[curEdge].dir;
+
+            if (++safe > (int)edges.size() + 10)
+                break;
+        }
+
+        // Remove last duplicated start if present
+        if (poly.size() >= 2 && poly.back() == poly.front())
+            poly.pop_back();
+
+        // Compress collinear points
+        vector<pair<int, int>> simp;
+        simp.reserve(poly.size());
+        auto collinear = [&](pair<int, int> a, pair<int, int> b, pair<int, int> c)
+        {
+            // axis-aligned: collinear if (a,b,c share x) or (a,b,c share y)
+            return (a.first == b.first && b.first == c.first) || (a.second == b.second && b.second == c.second);
+        };
+
+        for (auto &pt : poly)
+        {
+            simp.push_back(pt);
+            while (simp.size() >= 3)
+            {
+                auto a = simp[simp.size() - 3];
+                auto b = simp[simp.size() - 2];
+                auto c = simp[simp.size() - 1];
+                if (collinear(a, b, c))
+                {
+                    // remove middle
+                    simp[simp.size() - 2] = simp.back();
+                    simp.pop_back();
+                }
+                else
                     break;
-                }
             }
-            if (found)
-                break;
         }
 
-        if (startX == -1)
-            return corners;
-
-        // 2. Trace Clockwise (Wall on Right)
-        int cx = startX, cy = startY;
-        int dir = 0; // 0=UP, 1=RIGHT, 2=DOWN, 3=LEFT
-        int initialX = cx, initialY = cy, initialDir = dir;
-
-        int watchdog = 0;
-        do
+        // Ensure at least 4 points
+        if (simp.size() < 4)
         {
-            corners.push_back({cx, cy});
-
-            auto isM = [&](int x, int y)
-            { return isValid(x, y) && grid[x][y] == m.id; };
-
-            bool pTL = isM(cx - 1, cy);
-            bool pTR = isM(cx, cy);
-            bool pBL = isM(cx - 1, cy - 1);
-            bool pBR = isM(cx, cy - 1);
-
-            bool wallOnRight = false;
-            if (dir == 0)
-                wallOnRight = pTR;
-            if (dir == 1)
-                wallOnRight = pBR;
-            if (dir == 2)
-                wallOnRight = pBL;
-            if (dir == 3)
-                wallOnRight = pTL;
-
-            if (!wallOnRight)
-            {
-                // Convex Turn (Turn Right)
-                dir = (dir + 1) % 4;
-            }
-            else
-            {
-                // Wall is there. Check blocked front.
-                bool blocked = false;
-                if (dir == 0)
-                    blocked = pTL;
-                if (dir == 1)
-                    blocked = pTR;
-                if (dir == 2)
-                    blocked = pBR;
-                if (dir == 3)
-                    blocked = pBL;
-
-                if (blocked)
-                {
-                    // Concave Turn (Turn Left)
-                    dir = (dir + 3) % 4;
-                }
-                else
-                {
-                    // Straight. Move forward.
-                    corners.pop_back(); // Don't record collinear points
-                    if (dir == 0)
-                        cy++;
-                    if (dir == 1)
-                        cx++;
-                    if (dir == 2)
-                        cy--;
-                    if (dir == 3)
-                        cx--;
-                }
-            }
-
-            watchdog++;
-            if (watchdog > 200000)
-                break;
-        } while (cx != initialX || cy != initialY || dir != initialDir);
-
-        return corners;
+            return {
+                {m.minx, m.miny}, {m.minx, m.maxy}, {m.maxx, m.maxy}, {m.maxx, m.miny}};
+        }
+        return simp;
     }
 
-    // --- FINAL OUTPUT ---
-    void writeOutput(string filename)
+    void writeOutput(const string &outFile)
     {
-        ofstream outfile(filename);
+        ofstream out(outFile);
+        if (!out)
+            throw runtime_error("Cannot write output: " + outFile);
 
-        double totalHPWL = 0;
-        for (const auto &net : nets)
+        out << fixed << setprecision(1);
+        out << "HPWL " << totalHPWL() << "\n";
+
+        int softN = 0;
+        for (auto &m : mods)
+            if (m.type == ModType::SOFT)
+                softN++;
+        out << "SOFTMODULE " << softN << "\n";
+
+        for (auto &m : mods)
         {
-            Module &m1 = modules[net.mod1_id];
-            Module &m2 = modules[net.mod2_id];
-            totalHPWL += (abs(m1.centerX() - m2.centerX()) + abs(m1.centerY() - m2.centerY())) * net.weight;
-        }
-        outfile << "HPWL " << fixed << setprecision(1) << totalHPWL << endl;
-
-        int softCount = 0;
-        for (const auto &m : modules)
-            if (m.type == SOFT)
-                softCount++;
-        outfile << "SOFTMODULE " << softCount << endl;
-
-        for (const auto &m : modules)
-        {
-            if (m.type == SOFT)
+            if (m.type != ModType::SOFT)
+                continue;
+            auto poly = extractPolygon(m);
+            out << m.name << " " << (int)poly.size() << "\n";
+            for (auto &p : poly)
             {
-                vector<pair<int, int>> corners = const_cast<Refiner *>(this)->traceCorners(m);
-
-                if (corners.empty())
-                {
-                    // Fallback for lost modules (prevents grading crash)
-                    outfile << m.name << " 4" << endl;
-                    outfile << m.x << " " << m.y << endl;
-                    outfile << m.x << " " << m.y << endl;
-                    outfile << m.x << " " << m.y << endl;
-                    outfile << m.x << " " << m.y << endl;
-                }
-                else
-                {
-                    outfile << m.name << " " << corners.size() << endl;
-                    for (auto p : corners)
-                        outfile << p.first << " " << p.second << endl;
-                }
+                out << p.first << " " << p.second << "\n";
             }
         }
-        cout << "Results written to " << filename << endl;
     }
 };
 
 int main(int argc, char **argv)
 {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
     if (argc < 4)
     {
-        cerr << "Usage: ./refiner <input> <stage1_out> <final_out>" << endl;
+        cerr << "Usage: ./refiner_pixel <input> <stage1_out> <final_out>\n";
         return 1;
     }
-    Refiner r;
-    r.parseInput(argv[1]);
-    r.parseStage1Output(argv[2]);
-    r.buildGrid();
-    r.optimize();
-    r.writeOutput(argv[3]);
+
+    try
+    {
+        RefinerPixel r;
+        r.parseProblem(argv[1]);
+        r.parseStage1(argv[2]);
+        r.buildGridAndFrontiers();
+        r.optimize();
+        r.writeOutput(argv[3]);
+    }
+    catch (const exception &e)
+    {
+        cerr << "Error: " << e.what() << "\n";
+        return 2;
+    }
+
     return 0;
 }

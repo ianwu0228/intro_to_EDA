@@ -108,25 +108,51 @@ def parse_output_file(filepath):
         
     return hpwl, soft_modules
 
-def get_module_centers(fixed_modules, soft_modules):
-    """Helper to create a dictionary mapping module names to their center (x, y)."""
-    centers = {}
+# def get_module_centers(fixed_modules, soft_modules):
+#     """Helper to create a dictionary mapping module names to their center (x, y)."""
+#     centers = {}
     
-    # Calculate Fixed Module Centers
+#     # Calculate Fixed Module Centers
+#     for mod in fixed_modules:
+#         cx = mod['x'] + mod['w'] / 2.0
+#         cy = mod['y'] + mod['h'] / 2.0
+#         centers[mod['name']] = (cx, cy)
+        
+#     # Calculate Soft Module Centers (Centroid of polygon)
+#     for mod in soft_modules:
+#         corners = mod['corners']
+#         xs = [c[0] for c in corners]
+#         ys = [c[1] for c in corners]
+#         cx = sum(xs) / len(xs)
+#         cy = sum(ys) / len(ys)
+#         centers[mod['name']] = (cx, cy)
+        
+#     return centers
+
+
+def get_module_centers(fixed_modules, soft_modules):
+    """Map module name -> connection point (x,y)."""
+    centers = {}
+
+    # Fixed modules: bbox center (already correct)
     for mod in fixed_modules:
         cx = mod['x'] + mod['w'] / 2.0
         cy = mod['y'] + mod['h'] / 2.0
         centers[mod['name']] = (cx, cy)
-        
-    # Calculate Soft Module Centers (Centroid of polygon)
+
+    # Soft modules: bbox center (NEW)
     for mod in soft_modules:
         corners = mod['corners']
         xs = [c[0] for c in corners]
         ys = [c[1] for c in corners]
-        cx = sum(xs) / len(xs)
-        cy = sum(ys) / len(ys)
+
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        cx = (min_x + max_x) / 2.0
+        cy = (min_y + max_y) / 2.0
         centers[mod['name']] = (cx, cy)
-        
+
     return centers
 
 # def plot_result(chip_w, chip_h, fixed_modules, soft_modules, connections, hpwl, output_img="result.png"):
@@ -161,12 +187,25 @@ def plot_result(chip_w, chip_h, fixed_modules, soft_modules,
                                facecolor=cmap(idx % 20), alpha=0.7, zorder=3)
         ax.add_patch(poly)
         
-        # Calculate centroid for label
+        # # Calculate centroid for label
+        # xs = [c[0] for c in corners]
+        # ys = [c[1] for c in corners]
+        # cx = sum(xs) / len(xs)
+        # cy = sum(ys) / len(ys)
+        # ax.text(cx, cy, mod['name'], color='black', ha='center', va='center', fontsize=8, zorder=6)
+        # Bounding-box center for label
         xs = [c[0] for c in corners]
         ys = [c[1] for c in corners]
-        cx = sum(xs) / len(xs)
-        cy = sum(ys) / len(ys)
-        ax.text(cx, cy, mod['name'], color='black', ha='center', va='center', fontsize=8, zorder=6)
+
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        cx = (min_x + max_x) / 2.0
+        cy = (min_y + max_y) / 2.0
+
+        ax.text(cx, cy, mod['name'],
+                color='black', ha='center', va='center',
+                fontsize=8, zorder=6)
 
     # 4. Draw Connections (NEW)
     module_centers = get_module_centers(fixed_modules, soft_modules)
