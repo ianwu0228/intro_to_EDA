@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 
     // New Constructor: Single input file
     Floorplanner *fp = new Floorplanner(input_file, alpha);
-    cout << "Floorplanner initialized with alpha = " << alpha << endl;
+    // cout << "Floorplanner initialized with alpha = " << alpha << endl;
 
     // Start timing
     auto start_time = chrono::high_resolution_clock::now();

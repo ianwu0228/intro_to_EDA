@@ -307,9 +307,19 @@ void Floorplanner::computeNormalizationFactors(double &areaNorm, double &wlNorm,
 void Floorplanner::simulatedAnnealing()
 {
     double T = 10000.0;
-    const double T_min = 0.1;
+    // const double T_min = 0.1;
+    const double T_min = 1e-5;
     const double cooling_rate = 0.98;
-    const int iterations = 500; // Increase for better quality
+    // const int iterations = 500; // Increase for better quality
+
+    // Dynamic iterations based on problem size
+    int numModules = _soft_modules.size();
+    int k = 15; // Tuning knob: 10-20 is usually good
+    int iterations = k * numModules;
+
+    // Safety clamp for very small cases
+    if (iterations < 100)
+        iterations = 100;
 
     // Normalization
     computeNormalizationFactors(_normArea, _normWL, _normBoundary, _normOverlap, 50);
@@ -339,13 +349,30 @@ void Floorplanner::simulatedAnnealing()
             int backupX = _offsetX;
             int backupY = _offsetY;
 
-            if (r < 0.1)
+            // ==========================================
+            // TUNING: Action Probabilities (Sum = 1.0)
+            // ==========================================
+            double prob_resize = 0.10;       // 10%
+            double prob_rotate = 0.10;       // 10%
+            double prob_swap = 0.35;         // 35% (Global search)
+            double prob_del_ins = 0.35;      // 35% (Topology change)
+            double prob_move_cluster = 0.10; // 10% (Shift entire chip)
+            // ==========================================
+
+            // Calculate cumulative thresholds automatically
+            double t1 = prob_resize;
+            double t2 = t1 + prob_rotate;
+            double t3 = t2 + prob_swap;
+            double t4 = t3 + prob_del_ins;
+            // t5 is effectively 1.0
+
+            if (r < t1)
                 _tree->resizeRandom();
-            else if (r < 0.3)
+            else if (r < t2)
                 _tree->rotateRandom();
-            else if (r < 0.5)
+            else if (r < t3)
                 _tree->swapRandomNodes();
-            else if (r < 0.7)
+            else if (r < t4)
                 _tree->deleteAndInsert();
             else
                 moveCluster();
@@ -659,7 +686,7 @@ int main(int argc, char **argv)
     // ICCAD Contest format often uses: ./binary input output
     else if (argc == 3)
     {
-        cout << "ICCAD Format Detected." << endl;
+        // cout << "ICCAD Format Detected." << endl;
         input_file.open(argv[1], ios::in);
         output.open(argv[2], ios::out);
         alpha = 0; // Default if not provided

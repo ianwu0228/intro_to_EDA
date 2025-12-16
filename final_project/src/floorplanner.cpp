@@ -305,13 +305,13 @@ void Floorplanner::simulatedAnnealing()
 {
     double T = 10000.0;
     // const double T_min = 0.1;
-    const double T_min = 1e-5;
+    const double T_min = 1e-5; // 1e-5 and 1e-6 both result in roughly similar quality
     const double cooling_rate = 0.98;
     // const int iterations = 500; // Increase for better quality
 
     // Dynamic iterations based on problem size
     int numModules = _soft_modules.size();
-    int k = 15; // Tuning knob: 10-20 is usually good
+    int k = 15; // Tuning knob: 10-20 is usually good, 15 and 20 result in similar quality
     int iterations = k * numModules;
 
     // Safety clamp for very small cases
